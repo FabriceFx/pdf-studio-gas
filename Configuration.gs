@@ -48,7 +48,7 @@
  */
 
 const CONFIG = Object.freeze({
-  VERSION: "v2.0 - Refactorisation septembre 2026",
+  VERSION: "v2.1.0",
   AUTEUR: "Fabrice FAUCHEUX (faucheux.bzh)",
   NOM_APPLICATION: "PDFApplication",
   ORIGINE: "Basée sur PDFApp de Kanshi Tanaike (MIT)",
