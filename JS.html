@@ -1,0 +1,754 @@
+<script>
+(function () {
+  'use strict';
+
+  /* ==========================================================================
+     Définition des outils
+     Chaque outil décrit ce qu'il attend ; le formulaire en est déduit, ce qui
+     évite d'écrire sept fois le même balisage et garantit qu'ils se
+     comportent tous pareil.
+     ========================================================================== */
+
+  const ICONES = {
+    fusionner: '<path d="M8 4h8M8 4a2 2 0 0 0-2 2v4M8 4a2 2 0 0 1 2 2v4m6-6a2 2 0 0 1 2 2v4m-8 4h4m-2-2v4m-6 2h12a2 2 0 0 0 2-2v-2H4v2a2 2 0 0 0 2 2Z"/>',
+    decouper: '<path d="M6 4v6m12-6v6M4 12h16M7 16l-2 4m12-4 2 4M9 16h6"/>',
+    extraire: '<path d="M7 3h7l4 4v14H7zM14 3v4h4M10 12h5m-5 4h5"/>',
+    numeroter: '<path d="M6 3h12v18H6zM10 17h4"/><text x="12" y="13" font-size="7" text-anchor="middle" stroke="none" fill="currentColor">1</text>',
+    convertir: '<path d="M4 5h16v14H4zM4 15l4-4 3 3 4-5 5 6"/><circle cx="9" cy="9" r="1.4"/>',
+    metadonnees: '<path d="M6 3h12v18H6zM9 8h6M9 12h6M9 16h3"/>',
+    entete: '<path d="M5 4h14v16H5zM5 8h14M5 16h14"/>',
+    reorganiser: '<path d="M4 7h10m0 0-3-3m3 3-3 3M20 17H10m0 0 3-3m-3 3 3 3"/>',
+    supprimer: '<path d="M6 3h12v18H6zM9 9l6 6m0-6-6 6"/>',
+    pivoter: '<path d="M4 9a8 8 0 1 1 1.6 6.6M4 5v4h4"/>',
+    formulaire: '<path d="M5 3h14v18H5zM8 8h8M8 12h8M8 16h4"/><rect x="7" y="6.6" width="2.6" height="2.8" rx="0.4"/>',
+    filigrane: '<path d="M5 4h14v16H5z"/><path d="M8 16l3.5-4 2.5 2.6L16 12l2 3"/><circle cx="9.6" cy="8.6" r="1.3"/>'
+  };
+
+  const OUTILS = [
+    {
+      id: 'fusionner',
+      titre: 'FUSIONNER',
+      description: 'FUSIONNER_DESC',
+      fichiers: 'plusieurs',
+      champs: []
+    },
+    {
+      id: 'extraire',
+      titre: 'EXTRAIRE',
+      description: 'EXTRAIRE_DESC',
+      fichiers: 'un',
+      champs: [
+        { nom: 'pages', type: 'text', libelle: 'CHAMP_PAGES', aide: 'CHAMP_PAGES_AIDE', valeur: '1', requis: true }
+      ]
+    },
+    {
+      id: 'supprimer',
+      titre: 'SUPPRIMER',
+      description: 'SUPPRIMER_DESC',
+      fichiers: 'un',
+      champs: [
+        { nom: 'pages', type: 'text', libelle: 'CHAMP_PAGES_SUPPRIMER', aide: 'CHAMP_PAGES_AIDE', valeur: '' }
+      ]
+    },
+    {
+      id: 'reorganiser',
+      titre: 'REORGANISER',
+      description: 'REORGANISER_DESC',
+      fichiers: 'un',
+      champs: [
+        { nom: 'ordre', type: 'text', libelle: 'CHAMP_NOUVEL_ORDRE', aide: 'CHAMP_NOUVEL_ORDRE_AIDE', valeur: '' }
+      ]
+    },
+    {
+      id: 'pivoter',
+      titre: 'PIVOTER',
+      description: 'PIVOTER_DESC',
+      fichiers: 'un',
+      champs: [
+        {
+          nom: 'angle', type: 'select', libelle: 'CHAMP_ANGLE', valeur: '90',
+          options: [
+            { valeur: '90', libelle: 'ANGLE_90' },
+            { valeur: '180', libelle: 'ANGLE_180' },
+            { valeur: '270', libelle: 'ANGLE_270' }
+          ]
+        },
+        { nom: 'pages', type: 'text', libelle: 'CHAMP_PAGES_PIVOTER', aide: 'CHAMP_PAGES_PIVOTER_AIDE', valeur: '', facultatif: true }
+      ]
+    },
+    {
+      id: 'decouper',
+      titre: 'DECOUPER',
+      description: 'DECOUPER_DESC',
+      fichiers: 'un',
+      champs: []
+    },
+    {
+      id: 'filigrane',
+      titre: 'FILIGRANE',
+      description: 'FILIGRANE_DESC',
+      fichiers: 'un',
+      champs: [
+        { nom: 'texte', type: 'text', libelle: 'CHAMP_TEXTE_FILIGRANE', facultatif: true },
+        { nom: 'image', type: 'image', libelle: 'CHAMP_IMAGE', facultatif: true },
+        {
+          nom: 'emplacement', type: 'select', libelle: 'CHAMP_EMPLACEMENT', valeur: 'centre',
+          options: [
+            { valeur: 'hautGauche', libelle: 'PLACE_HAUT_GAUCHE' },
+            { valeur: 'hautDroite', libelle: 'PLACE_HAUT_DROITE' },
+            { valeur: 'centre', libelle: 'PLACE_CENTRE' },
+            { valeur: 'basGauche', libelle: 'PLACE_BAS_GAUCHE' },
+            { valeur: 'basDroite', libelle: 'PLACE_BAS_DROITE' }
+          ]
+        },
+        {
+          nom: 'portee', type: 'select', libelle: 'CHAMP_PORTEE', valeur: 'toutes',
+          options: [
+            { valeur: 'toutes', libelle: 'PORTEE_TOUTES' },
+            { valeur: 'premiere', libelle: 'PORTEE_PREMIERE' }
+          ]
+        },
+        { nom: 'taille', type: 'number', libelle: 'CHAMP_TAILLE', valeur: '24', min: 6, max: 96 },
+        { nom: 'largeurImage', type: 'number', libelle: 'CHAMP_LARGEUR_IMAGE', valeur: '120', min: 10, max: 600 },
+        { nom: 'hauteurImage', type: 'number', libelle: 'CHAMP_HAUTEUR_IMAGE', aide: 'CHAMP_DIMENSIONS_AIDE', valeur: '120', min: 10, max: 600 }
+      ]
+    },
+    {
+      id: 'formulaire',
+      titre: 'FORMULAIRE',
+      description: 'FORMULAIRE_DESC',
+      fichiers: 'un',
+      // Les champs ne sont connus qu'après lecture du document : ils sont
+      // construits à la volée, contrairement aux métadonnées dont la liste
+      // est fixée par la norme PDF.
+      deuxTemps: true,
+      champsDynamiques: true,
+      actionLecture: 'lireFormulaire',
+      action: 'ecrireFormulaire',
+      champs: []
+    },
+    {
+      id: 'numeroter',
+      titre: 'NUMEROTER',
+      description: 'NUMEROTER_DESC',
+      fichiers: 'un',
+      champs: [
+        {
+          nom: 'position', type: 'select', libelle: 'CHAMP_POSITION', valeur: 'center',
+          options: [
+            { valeur: 'left', libelle: 'POSITION_GAUCHE' },
+            { valeur: 'center', libelle: 'POSITION_CENTRE' },
+            { valeur: 'right', libelle: 'POSITION_DROITE' }
+          ]
+        },
+        { nom: 'taille', type: 'number', libelle: 'CHAMP_TAILLE', valeur: '10', min: 6, max: 48 },
+        { nom: 'marge', type: 'number', libelle: 'CHAMP_MARGE', valeur: '20', min: 0, max: 200 }
+      ]
+    },
+    {
+      id: 'entete',
+      titre: 'ENTETE',
+      description: 'ENTETE_DESC',
+      fichiers: 'un',
+      champs: [
+        { nom: 'enteteGauche', type: 'text', libelle: 'CHAMP_ENTETE_GAUCHE', facultatif: true },
+        { nom: 'enteteCentre', type: 'text', libelle: 'CHAMP_ENTETE_CENTRE', facultatif: true },
+        { nom: 'enteteDroite', type: 'text', libelle: 'CHAMP_ENTETE_DROITE', facultatif: true },
+        { nom: 'piedCentre', type: 'text', libelle: 'CHAMP_PIED_CENTRE', facultatif: true }
+      ]
+    },
+    {
+      id: 'metadonnees',
+      titre: 'METADONNEES',
+      description: 'METADONNEES_DESC',
+      fichiers: 'un',
+      // Outil en deux temps : on lit d'abord, on propose ensuite la correction
+      // des valeurs existantes. Écrire à l'aveugle effacerait ce qu'on ignore.
+      deuxTemps: true,
+      actionLecture: 'lireMetadonnees',
+      action: 'ecrireMetadonnees',
+      champs: [
+        { nom: 'title', type: 'text', libelle: 'CHAMP_TITRE', facultatif: true },
+        { nom: 'author', type: 'text', libelle: 'CHAMP_AUTEUR', facultatif: true },
+        { nom: 'subject', type: 'text', libelle: 'CHAMP_SUJET', facultatif: true },
+        { nom: 'keywords', type: 'text', libelle: 'CHAMP_MOTSCLES', aide: 'CHAMP_MOTSCLES_AIDE', facultatif: true }
+      ]
+    },
+    {
+      id: 'convertir',
+      titre: 'CONVERTIR',
+      description: 'CONVERTIR_DESC',
+      fichiers: 'un',
+      rappel: () => tr('AVERT_PAGES_MAX', REGLAGES.maxPagesConversion),
+      champs: []
+    }
+  ];
+
+  /* ==========================================================================
+     Utilitaires
+     ========================================================================== */
+
+  const $ = (selecteur) => document.querySelector(selecteur);
+
+  /**
+   * Traduit une clé, en remplaçant les %s par les arguments fournis.
+   */
+  function tr(cle, ...args) {
+    let texte = LIBELLES[cle] || cle;
+    args.forEach(a => { texte = texte.replace('%s', a); });
+    return texte;
+  }
+
+  /**
+   * Applique les libellés à tous les éléments porteurs de data-libelle.
+   */
+  function appliquerLibelles(racine) {
+    (racine || document).querySelectorAll('[data-libelle]').forEach(el => {
+      el.textContent = tr(el.dataset.libelle);
+    });
+  }
+
+  function echapper(texte) {
+    const div = document.createElement('div');
+    div.textContent = texte == null ? '' : String(texte);
+    return div.innerHTML;
+  }
+
+  function formaterTaille(octets) {
+    if (octets < 1024) return octets + ' o';
+    if (octets < 1024 * 1024) return Math.round(octets / 1024) + ' Ko';
+    return (octets / 1024 / 1024).toFixed(1) + ' Mo';
+  }
+
+  /**
+   * Lit un fichier et en rend le contenu en base64, sans l'en-tête data:.
+   */
+  function enBase64(fichier) {
+    return new Promise((resoudre, rejeter) => {
+      const lecteur = new FileReader();
+      lecteur.onload = () => resoudre(String(lecteur.result).split(',')[1]);
+      lecteur.onerror = () => rejeter(lecteur.error);
+      lecteur.readAsDataURL(fichier);
+    });
+  }
+
+  /**
+   * Enveloppe google.script.run dans une promesse, pour écrire la suite des
+   * opérations de façon linéaire plutôt qu'en cascade de rappels.
+   */
+  function appelerServeur(nomFonction, ...args) {
+    return new Promise((resoudre, rejeter) => {
+      google.script.run
+        .withSuccessHandler(resoudre)
+        .withFailureHandler(rejeter)
+        [nomFonction](...args);
+    });
+  }
+
+  function patienter(ms) {
+    return new Promise(resoudre => setTimeout(resoudre, ms));
+  }
+
+  /* ==========================================================================
+     Grille
+     ========================================================================== */
+
+  function construireGrille() {
+    const grille = $('#grilleOutils');
+
+    OUTILS.forEach(outil => {
+      const carte = document.createElement('button');
+      carte.type = 'button';
+      carte.className = 'carte';
+      carte.innerHTML =
+        '<span class="icone"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">'
+        + ICONES[outil.id] + '</svg></span>'
+        + '<h2>' + echapper(tr(outil.titre)) + '</h2>'
+        + '<p>' + echapper(tr(outil.description)) + '</p>';
+      carte.addEventListener('click', () => ouvrirOutil(outil));
+      grille.appendChild(carte);
+    });
+  }
+
+  /* ==========================================================================
+     Fenêtre d'un outil
+     ========================================================================== */
+
+  let outilCourant = null;
+  let fichiersCourants = [];
+  let imageCourante = null;
+
+  function ouvrirOutil(outil) {
+    outilCourant = outil;
+    fichiersCourants = [];
+    imageCourante = null;
+
+    $('#titreOutil').textContent = tr(outil.titre);
+    $('#descriptionOutil').textContent = tr(outil.description);
+
+    const corps = $('#corpsOutil');
+    corps.innerHTML = '';
+
+    if (outil.rappel) {
+      const rappel = document.createElement('div');
+      rappel.className = 'rappel';
+      rappel.textContent = outil.rappel();
+      corps.appendChild(rappel);
+    }
+
+    corps.appendChild(construireDepot(outil));
+
+    const zoneChamps = document.createElement('div');
+    zoneChamps.id = 'zoneChamps';
+    zoneChamps.style.display = outil.deuxTemps ? 'none' : 'grid';
+    zoneChamps.style.gap = '16px';
+    outil.champs.forEach(champ => zoneChamps.appendChild(construireChamp(champ)));
+    corps.appendChild(zoneChamps);
+
+    const message = document.createElement('div');
+    message.className = 'message';
+    message.id = 'messageOutil';
+    corps.appendChild(message);
+
+    const lancer = $('#boutonLancer');
+    lancer.textContent = outil.deuxTemps
+      ? tr(outil.champsDynamiques ? 'LIRE_FORMULAIRE' : 'LIRE_METADONNEES')
+      : tr('LANCER');
+    lancer.disabled = true;
+
+    $('#modaleOutil').showModal();
+  }
+
+  function construireDepot(outil) {
+    const multiple = outil.fichiers === 'plusieurs';
+    const depot = document.createElement('label');
+    depot.className = 'depot';
+    depot.innerHTML =
+      '<span class="intitule">' + echapper(tr(multiple ? 'DEPOSER_FICHIERS' : 'DEPOSER_FICHIER')) + '</span>'
+      + '<span class="liste" id="listeFichiers">' + echapper(tr('AUCUN_FICHIER')) + '</span>';
+
+    const entree = document.createElement('input');
+    entree.type = 'file';
+    entree.accept = 'application/pdf,.pdf';
+    entree.multiple = multiple;
+    entree.addEventListener('change', () => retenirFichiers(entree.files, outil));
+    depot.appendChild(entree);
+
+    ['dragover', 'dragenter'].forEach(ev => depot.addEventListener(ev, e => {
+      e.preventDefault();
+      depot.classList.add('survol');
+    }));
+    ['dragleave', 'drop'].forEach(ev => depot.addEventListener(ev, () => depot.classList.remove('survol')));
+    depot.addEventListener('drop', e => {
+      e.preventDefault();
+      retenirFichiers(e.dataTransfer.files, outil);
+    });
+
+    return depot;
+  }
+
+  function retenirFichiers(liste, outil) {
+    const fichiers = Array.from(liste).filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf');
+    fichiersCourants = outil.fichiers === 'plusieurs' ? fichiers : fichiers.slice(0, 1);
+
+    const affichage = $('#listeFichiers');
+    const message = $('#messageOutil');
+    message.textContent = '';
+    message.className = 'message';
+
+    if (fichiersCourants.length === 0) {
+      affichage.textContent = tr('AUCUN_FICHIER');
+      $('#boutonLancer').disabled = true;
+      return;
+    }
+
+    const total = fichiersCourants.reduce((somme, f) => somme + f.size, 0);
+    affichage.textContent = fichiersCourants.map(f => f.name).join(', ')
+      + ' — ' + formaterTaille(total);
+
+    if (total > REGLAGES.tailleMaxEnvoi) {
+      message.textContent = tr('ENVOI_TROP_LOURD',
+        (total / 1024 / 1024).toFixed(1),
+        Math.round(REGLAGES.tailleMaxEnvoi / 1024 / 1024));
+      message.className = 'message erreur';
+      $('#boutonLancer').disabled = true;
+      return;
+    }
+
+    if (outil.fichiers === 'plusieurs' && fichiersCourants.length < 2) {
+      message.textContent = tr('DEUX_FICHIERS_MINIMUM');
+      message.className = 'message erreur';
+      $('#boutonLancer').disabled = true;
+      return;
+    }
+
+    $('#boutonLancer').disabled = false;
+  }
+
+  function construireChamp(champ) {
+    const bloc = document.createElement('div');
+    bloc.className = 'champ';
+
+    const etiquette = document.createElement('label');
+    etiquette.htmlFor = 'champ_' + champ.nom;
+    etiquette.textContent = tr(champ.libelle)
+      + (champ.facultatif ? ' (' + tr('CHAMP_FACULTATIF') + ')' : '');
+    bloc.appendChild(etiquette);
+
+    let entree;
+    if (champ.type === 'image') {
+      entree = document.createElement('input');
+      entree.type = 'file';
+      entree.accept = 'image/png,image/jpeg';
+      entree.addEventListener('change', () => {
+        imageCourante = entree.files && entree.files[0] ? entree.files[0] : null;
+      });
+      entree.id = 'champ_' + champ.nom;
+      bloc.appendChild(entree);
+      if (champ.aide) {
+        const aide = document.createElement('span');
+        aide.className = 'aide';
+        aide.textContent = tr(champ.aide);
+        bloc.appendChild(aide);
+      }
+      return bloc;
+    }
+
+    if (champ.type === 'select') {
+      entree = document.createElement('select');
+      champ.options.forEach(option => {
+        const el = document.createElement('option');
+        el.value = option.valeur;
+        el.textContent = tr(option.libelle);
+        entree.appendChild(el);
+      });
+    } else {
+      entree = document.createElement('input');
+      entree.type = champ.type;
+      if (champ.min !== undefined) entree.min = champ.min;
+      if (champ.max !== undefined) entree.max = champ.max;
+    }
+
+    entree.id = 'champ_' + champ.nom;
+    entree.dataset.champ = champ.nom;
+    if (champ.valeur !== undefined) entree.value = champ.valeur;
+    bloc.appendChild(entree);
+
+    if (champ.aide) {
+      const aide = document.createElement('span');
+      aide.className = 'aide';
+      aide.textContent = tr(champ.aide);
+      bloc.appendChild(aide);
+    }
+
+    return bloc;
+  }
+
+  function collecterParametres() {
+    const parametres = {};
+    document.querySelectorAll('#zoneChamps [data-champ]').forEach(el => {
+      parametres[el.dataset.champ] = el.value;
+    });
+    return parametres;
+  }
+
+  /**
+   * Rassemble les paramètres à envoyer. Les champs d'un formulaire PDF sont
+   * découverts à la lecture : ils forment une liste nommée plutôt qu'un objet
+   * aux clés connues d'avance.
+   */
+  function rassemblerParametres() {
+    if (!outilCourant.champsDynamiques || !outilCourant.lecturefaite) {
+      return collecterParametres();
+    }
+
+    const valeurs = [];
+    document.querySelectorAll('#zoneChamps [data-champ-pdf]').forEach(el => {
+      valeurs.push({
+        name: el.dataset.champPdf,
+        value: el.type === 'checkbox' ? el.checked : el.value
+      });
+    });
+    return { valeurs };
+  }
+
+  /**
+   * Construit un formulaire à l'image de celui que porte le document.
+   */
+  function afficherChampsFormulaire(champs) {
+    const message = $('#messageOutil');
+
+    if (!champs.length) {
+      message.textContent = tr('AUCUN_CHAMP');
+      message.className = 'message erreur';
+      return;
+    }
+
+    outilCourant.lecturefaite = true;
+
+    const zone = $('#zoneChamps');
+    zone.innerHTML = '';
+
+    champs.forEach(champ => {
+      const bloc = document.createElement('div');
+      bloc.className = champ.type === 'Checkbox' ? 'champ case' : 'champ';
+
+      let entree;
+      if (champ.type === 'Checkbox') {
+        entree = document.createElement('input');
+        entree.type = 'checkbox';
+        entree.checked = champ.value === true;
+      } else if (champ.options && champ.options.length) {
+        entree = document.createElement('select');
+        champ.options.forEach(option => {
+          const el = document.createElement('option');
+          el.value = option;
+          el.textContent = option;
+          entree.appendChild(el);
+        });
+        const courante = Array.isArray(champ.value) ? champ.value[0] : champ.value;
+        if (courante) entree.value = courante;
+      } else {
+        entree = document.createElement('input');
+        entree.type = 'text';
+        entree.value = champ.value == null ? '' : champ.value;
+      }
+
+      entree.dataset.champPdf = champ.name;
+      entree.id = 'pdf_' + champ.name;
+
+      const etiquette = document.createElement('label');
+      etiquette.htmlFor = entree.id;
+      etiquette.textContent = champ.name;
+
+      // Une case à cocher se lit mieux avant son intitulé.
+      if (champ.type === 'Checkbox') {
+        bloc.appendChild(entree);
+        bloc.appendChild(etiquette);
+      } else {
+        bloc.appendChild(etiquette);
+        bloc.appendChild(entree);
+      }
+
+      zone.appendChild(bloc);
+    });
+
+    message.textContent = tr('CHAMPS_TROUVES', champs.length);
+    message.className = 'message succes';
+
+    zone.style.display = 'grid';
+    $('#boutonLancer').textContent = tr('LANCER');
+  }
+
+  /* ==========================================================================
+     Exécution
+     ========================================================================== */
+
+  async function lancer() {
+    const outil = outilCourant;
+    const action = (outil.deuxTemps && !outil.lecturefaite) ? outil.actionLecture : (outil.action || outil.id);
+
+    const message = $('#messageOutil');
+    message.textContent = '';
+    message.className = 'message';
+
+    // Le bouton bascule en état occupé avant toute autre chose. La lecture des
+    // fichiers et l'ouverture de l'écran d'attente prennent un instant, et
+    // c'est précisément cet instant pendant lequel le visiteur se demande si
+    // son clic a été pris en compte.
+    const bouton = $('#boutonLancer');
+    occuperBouton(bouton, true);
+    montrerAttente(true, tr('ETAPE_ENVOI'));
+
+    try {
+      const charges = [];
+      for (const fichier of fichiersCourants) {
+        charges.push({ nom: fichier.name, type: 'application/pdf', base64: await enBase64(fichier) });
+      }
+      // L'image du filigrane suit les PDF et conserve son propre type.
+      if (imageCourante) {
+        charges.push({
+          nom: imageCourante.name,
+          type: imageCourante.type || 'image/png',
+          base64: await enBase64(imageCourante)
+        });
+      }
+
+      montrerAttente(true, tr('ETAPE_TRAITEMENT'));
+      const depart = await appelerServeur('serveurLancerTache', action, charges, rassemblerParametres());
+      const resultat = await interroger(depart.jeton);
+
+      montrerAttente(false);
+      occuperBouton(bouton, false);
+
+      if (resultat.mode === 'donnees') {
+        if (resultat.donnees.champs) {
+          afficherChampsFormulaire(resultat.donnees.champs);
+        } else {
+          afficherMetadonnees(resultat.donnees);
+        }
+      } else {
+        $('#modaleOutil').close();
+        afficherResultat(resultat);
+      }
+    } catch (e) {
+      montrerAttente(false);
+      occuperBouton(bouton, false);
+      message.textContent = (e && e.message) ? e.message : String(e);
+      message.className = 'message erreur';
+    }
+  }
+
+  /**
+   * Bascule un bouton en état occupé, en conservant son libellé d'origine.
+   */
+  function occuperBouton(bouton, occupe) {
+    if (occupe) {
+      bouton.dataset.libelleOrigine = bouton.textContent;
+      bouton.disabled = true;
+      bouton.classList.add('bouton-occupe');
+      bouton.innerHTML = '<span class="rotor-mini"></span>' + echapper(tr('TRAITEMENT')) + '…';
+      return;
+    }
+
+    bouton.disabled = false;
+    bouton.classList.remove('bouton-occupe');
+    bouton.textContent = bouton.dataset.libelleOrigine || tr('LANCER');
+  }
+
+  /**
+   * Interroge le serveur jusqu'à ce que le traitement aboutisse.
+   * La cadence s'espace progressivement : inutile de harceler le serveur pour
+   * une conversion qui prendra une minute.
+   */
+  async function interroger(jeton) {
+    let attente = 900;
+    const limite = Date.now() + 5 * 60 * 1000;
+
+    while (Date.now() < limite) {
+      await patienter(attente);
+      attente = Math.min(attente * 1.25, 4000);
+
+      const etat = await appelerServeur('serveurEtatTache', jeton);
+      if (etat.etat === 'termine') return etat;
+      if (etat.etat === 'erreur') throw new Error(etat.message);
+    }
+
+    throw new Error(tr('TACHE_TROP_LONGUE'));
+  }
+
+  function afficherMetadonnees(donnees) {
+    outilCourant.lecturefaite = true;
+
+    const corps = $('#corpsOutil');
+    const existant = document.getElementById('resumeMetadonnees');
+    if (existant) existant.remove();
+
+    const resume = document.createElement('dl');
+    resume.className = 'tableau-donnees';
+    resume.id = 'resumeMetadonnees';
+    resume.innerHTML = '<div><dt>' + echapper(tr('NOMBRE_PAGES')) + '</dt><dd>'
+      + echapper(donnees.numberOfPages) + '</dd></div>';
+    corps.insertBefore(resume, document.getElementById('zoneChamps'));
+
+    ['title', 'author', 'subject', 'keywords'].forEach(cle => {
+      const entree = document.getElementById('champ_' + cle);
+      if (entree) entree.value = donnees[cle] || '';
+    });
+
+    $('#zoneChamps').style.display = 'grid';
+    $('#boutonLancer').textContent = tr('LANCER');
+  }
+
+  /* ==========================================================================
+     Résultat
+     ========================================================================== */
+
+  let resultatCourant = null;
+
+  function afficherResultat(resultat) {
+    resultatCourant = resultat;
+
+    $('#titreResultat').textContent = tr('RESULTAT_PRET');
+    $('#messageResultat').textContent = resultat.message || '';
+
+    $('#corpsResultat').innerHTML =
+      '<dl class="tableau-donnees">'
+      + '<div><dt>' + echapper(resultat.nom) + '</dt>'
+      + '<dd>' + echapper(formaterTaille(resultat.taille)) + '</dd></div>'
+      + '</dl>';
+
+    const bouton = $('#boutonTelecharger');
+    bouton.textContent = resultat.mode === 'drive' ? tr('OUVRIR_DRIVE') : tr('TELECHARGER');
+
+    $('#modaleResultat').showModal();
+  }
+
+  function recupererResultat() {
+    if (!resultatCourant) return;
+
+    if (resultatCourant.mode === 'drive') {
+      window.open(resultatCourant.url, '_blank');
+      return;
+    }
+
+    // Le base64 est reconverti en octets puis servi par une URL d'objet :
+    // plus fiable qu'une URL « data: », que les navigateurs refusent souvent
+    // d'ouvrir depuis un cadre restreint.
+    const binaire = atob(resultatCourant.contenu);
+    const octets = new Uint8Array(binaire.length);
+    for (let i = 0; i < binaire.length; i++) octets[i] = binaire.charCodeAt(i);
+
+    const url = URL.createObjectURL(new Blob([octets], { type: resultatCourant.typeMime }));
+    const lien = document.createElement('a');
+    lien.href = url;
+    lien.download = resultatCourant.nom;
+    document.body.appendChild(lien);
+    lien.click();
+    document.body.removeChild(lien);
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+
+  /**
+   * Ouvre ou ferme l'écran d'attente, et précise l'étape en cours.
+   * Deux dialogues modaux s'empilent sans difficulté : celui-ci se place
+   * au-dessus de la fenêtre de l'outil, qui reste ouverte derrière.
+   */
+  function montrerAttente(visible, etape) {
+    const ecran = $('#ecranAttente');
+
+    if (!visible) {
+      if (ecran.open) ecran.close();
+      return;
+    }
+
+    $('#etapeAttente').textContent = etape || '';
+    if (!ecran.open) ecran.showModal();
+  }
+
+  /* ==========================================================================
+     Démarrage
+     ========================================================================== */
+
+  document.addEventListener('DOMContentLoaded', () => {
+    appliquerLibelles();
+    construireGrille();
+
+    $('#signature').textContent = LIBELLES.VERSION + ' · ' + LIBELLES.AUTEUR;
+    $('#versionAPropos').textContent = LIBELLES.VERSION + ' · ' + LIBELLES.AUTEUR;
+
+    $('#boutonAPropos').addEventListener('click', () => $('#modaleAPropos').showModal());
+    $('#boutonLancer').addEventListener('click', lancer);
+    $('#boutonTelecharger').addEventListener('click', recupererResultat);
+
+    $('#modaleOutil').addEventListener('close', () => {
+      if (outilCourant) delete outilCourant.lecturefaite;
+    });
+
+    // La touche Échap ferme un dialogue par défaut. Sur l'écran d'attente,
+    // cela laisserait croire que le traitement a été annulé alors qu'il
+    // continue côté serveur.
+    $('#ecranAttente').addEventListener('cancel', e => e.preventDefault());
+  });
+})();
+</script>

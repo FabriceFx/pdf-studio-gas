@@ -1,0 +1,438 @@
+<style>
+  /* ==========================================================================
+     Thème Workspace
+     Conforme au guide d'harmonisation : Google Sans puis Roboto en repli,
+     bleu Google #1A73E8, surfaces blanches, grille de 8 px, coins à 8 px pour
+     les conteneurs et 4 px pour les contrôles, ombres discrètes.
+     ========================================================================== */
+  :root {
+    --fond: #f1f3f4;
+    --surface: #ffffff;
+    --surface-attenuee: #f8f9fa;
+    --surface-selection: #e8f0fe;
+
+    --accent: #1a73e8;
+    --accent-fonce: #1b66c9;
+    --accent-bordure: #d2e3fc;
+    --succes: #188038;
+    --erreur: #d93025;
+    --avertissement: #ea8600;
+    --avertissement-fond: #fef7e0;
+    --avertissement-bordure: #feefc3;
+
+    --texte: #202124;
+    --texte-attenue: #5f6368;
+    --texte-faible: #80868b;
+
+    --bordure: #dadce0;
+    --bordure-vive: #bdc1c6;
+
+    --rayon: 8px;
+    --rayon-controle: 4px;
+
+    --ombre-1: 0 1px 2px rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+    --ombre-2: 0 1px 3px rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
+    --ombre-3: 0 4px 8px 3px rgba(60, 64, 67, 0.15), 0 1px 3px rgba(60, 64, 67, 0.3);
+
+    --transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --police: 'Google Sans', Roboto, Arial, sans-serif;
+  }
+
+  /* ==========================================================================
+     Base
+     ========================================================================== */
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 0 24px 64px;
+    font-family: var(--police);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--texte);
+    background: var(--fond);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 { font-weight: 500; margin: 0; }
+
+  /* ==========================================================================
+     En-tête
+     ========================================================================== */
+  .bandeau {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 32px 0 24px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  .bandeau h1 {
+    font-size: 1.75rem;
+    font-weight: 400;
+    color: var(--texte);
+  }
+
+  .bandeau .sous-titre {
+    color: var(--accent);
+    font-weight: 500;
+    font-size: 0.875rem;
+    margin-top: 4px;
+  }
+
+  .bandeau .accroche {
+    color: var(--texte-attenue);
+    margin: 8px 0 0;
+    max-width: 52ch;
+  }
+
+  .actions-bandeau { display: flex; gap: 8px; flex: none; flex-wrap: wrap; }
+
+  /* ==========================================================================
+     Grille d'outils
+     ========================================================================== */
+  .grille {
+    max-width: 1040px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+    gap: 16px;
+  }
+
+  .carte {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 20px;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--bordure);
+    border-radius: var(--rayon);
+    transition: box-shadow var(--transition), border-color var(--transition);
+  }
+
+  .carte:hover { box-shadow: var(--ombre-2); border-color: transparent; }
+
+  .carte:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: var(--ombre-1);
+  }
+
+  .carte .icone {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--surface-selection);
+  }
+
+  .carte .icone svg {
+    width: 20px;
+    height: 20px;
+    stroke: var(--accent);
+    fill: none;
+    stroke-width: 1.6;
+  }
+
+  .carte h2 { font-size: 1rem; margin-top: 4px; }
+  .carte p { margin: 0; color: var(--texte-attenue); font-size: 0.875rem; }
+
+  /* ==========================================================================
+     Boutons
+     ========================================================================== */
+  .bouton {
+    font-family: var(--police);
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.0107em;
+    height: 36px;
+    padding: 0 24px;
+    border-radius: var(--rayon-controle);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background var(--transition), box-shadow var(--transition);
+  }
+
+  .bouton:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .bouton:disabled { opacity: 0.38; cursor: not-allowed; box-shadow: none; }
+
+  .bouton-principal {
+    background: var(--accent);
+    color: #ffffff;
+    box-shadow: var(--ombre-1);
+  }
+
+  .bouton-principal:hover:not(:disabled) { background: var(--accent-fonce); box-shadow: var(--ombre-2); }
+  .bouton-principal:active:not(:disabled) { background: #185abc; box-shadow: var(--ombre-1); }
+  .bouton-principal:disabled { background: #e8eaed; color: var(--texte-faible); }
+
+  .bouton-discret {
+    background: transparent;
+    color: var(--accent);
+    border-color: var(--bordure);
+  }
+
+  .bouton-discret:hover:not(:disabled) { background: rgba(26, 115, 232, 0.06); border-color: var(--bordure-vive); }
+  .bouton-discret:active:not(:disabled) { background: rgba(26, 115, 232, 0.12); }
+
+  /* État occupé : le bouton garde sa place et devient inerte. Un bouton qui
+     se vide ou disparaît laisse croire à une panne. */
+  .bouton-occupe {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: progress;
+  }
+
+  .bouton-occupe:disabled { opacity: 1; cursor: progress; background: #8ab4f8; color: #ffffff; }
+
+  .rotor-mini {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    border-top-color: #ffffff;
+    animation: rotation 700ms linear infinite;
+  }
+
+  /* ==========================================================================
+     Fenêtres modales
+     ========================================================================== */
+  dialog {
+    width: min(560px, calc(100vw - 32px));
+    padding: 0;
+    color: var(--texte);
+    background: var(--surface);
+    border: none;
+    border-radius: var(--rayon);
+    box-shadow: var(--ombre-3);
+  }
+
+  dialog::backdrop { background: rgba(32, 33, 36, 0.5); }
+
+  dialog[open] { animation: apparition 180ms cubic-bezier(0, 0, 0.2, 1); }
+
+  @keyframes apparition {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .modale-entete {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 24px 24px 8px;
+  }
+
+  .modale-entete h2 { font-size: 1.375rem; font-weight: 400; }
+  .modale-entete p { margin: 8px 0 0; color: var(--texte-attenue); }
+
+  .fermeture {
+    flex: none;
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    font-size: 1.4rem;
+    line-height: 1;
+    color: var(--texte-attenue);
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background var(--transition);
+  }
+
+  .fermeture:hover { background: rgba(60, 64, 67, 0.08); color: var(--texte); }
+  .fermeture:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .modale-corps {
+    padding: 8px 24px;
+    display: grid;
+    gap: 16px;
+    max-height: min(60vh, 520px);
+    overflow-y: auto;
+  }
+
+  .modale-pied {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 16px 24px 24px;
+  }
+
+  /* ==========================================================================
+     Formulaires
+     ========================================================================== */
+  .champ { display: grid; gap: 4px; }
+
+  .champ label { font-size: 0.8125rem; font-weight: 500; color: var(--texte-attenue); }
+
+  .champ .aide { font-size: 0.75rem; color: var(--texte-faible); }
+
+  .champ input[type="text"],
+  .champ input[type="number"],
+  .champ select {
+    font-family: var(--police);
+    font-size: 0.875rem;
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    color: var(--texte);
+    background: var(--surface);
+    border: 1px solid var(--bordure);
+    border-radius: var(--rayon-controle);
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
+
+  .champ input:hover, .champ select:hover { border-color: var(--bordure-vive); }
+
+  .champ input:focus, .champ select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+
+  .champ.case {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .champ.case label { color: var(--texte); font-weight: 400; font-size: 0.875rem; }
+  .champ.case input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+
+  .depot {
+    display: grid;
+    gap: 6px;
+    place-items: center;
+    padding: 24px 16px;
+    text-align: center;
+    border: 1px dashed var(--bordure-vive);
+    border-radius: var(--rayon-controle);
+    background: var(--surface-attenuee);
+    cursor: pointer;
+    transition: background var(--transition), border-color var(--transition);
+  }
+
+  .depot:hover, .depot.survol { background: var(--surface-selection); border-color: var(--accent); }
+  .depot input[type="file"] { display: none; }
+  .depot .intitule { font-weight: 500; color: var(--accent); }
+  .depot .liste { font-size: 0.8125rem; color: var(--texte-attenue); }
+
+  .rappel {
+    display: flex;
+    gap: 10px;
+    padding: 12px 14px;
+    font-size: 0.8125rem;
+    color: var(--texte-attenue);
+    background: var(--avertissement-fond);
+    border: 1px solid var(--avertissement-bordure);
+    border-radius: var(--rayon-controle);
+  }
+
+  .tableau-donnees { display: grid; gap: 8px; margin: 0; font-size: 0.875rem; }
+  .tableau-donnees div {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--bordure);
+  }
+  .tableau-donnees div:last-child { border-bottom: none; padding-bottom: 0; }
+  .tableau-donnees dt { color: var(--texte-attenue); }
+  .tableau-donnees dd { margin: 0; text-align: right; font-weight: 500; }
+
+  .message { font-size: 0.8125rem; }
+  .message.erreur { color: var(--erreur); }
+  .message.succes { color: var(--succes); }
+
+  .separateur {
+    height: 1px;
+    background: var(--bordure);
+    border: none;
+    margin: 0;
+  }
+
+  /* ==========================================================================
+     Attente
+     Un <dialog> et non un calque en position fixe : celui-ci passerait sous la
+     fenêtre de l'outil, rendue dans le « top layer » par showModal().
+     ========================================================================== */
+  dialog.attente {
+    width: auto;
+    max-width: none;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .attente .boite {
+    display: grid;
+    gap: 12px;
+    place-items: center;
+    padding: 32px 40px;
+    text-align: center;
+    background: var(--surface);
+    border-radius: var(--rayon);
+    box-shadow: var(--ombre-3);
+  }
+
+  .attente p { margin: 0; }
+  .attente .detail { color: var(--texte-attenue); font-size: 0.8125rem; max-width: 32ch; }
+
+  .rotor {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 3px solid #e8eaed;
+    border-top-color: var(--accent);
+    animation: rotation 900ms linear infinite;
+  }
+
+  @keyframes rotation { to { transform: rotate(360deg); } }
+
+  /* ==========================================================================
+     Pied de page
+     ========================================================================== */
+  .pied {
+    max-width: 1040px;
+    margin: 40px auto 0;
+    padding-top: 24px;
+    border-top: 1px solid var(--bordure);
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--texte-faible);
+  }
+
+  .pied a { color: var(--accent); text-decoration: none; }
+  .pied a:hover { text-decoration: underline; }
+
+  /* ==========================================================================
+     Téléphone
+     ========================================================================== */
+  @media (max-width: 640px) {
+    body { padding: 0 16px 48px; }
+    .bandeau { flex-direction: column; padding-top: 24px; }
+    .grille { grid-template-columns: 1fr; }
+    .modale-pied { flex-direction: column-reverse; }
+    .modale-pied .bouton { width: 100%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="<?= langue ?>">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Google Sans n'est pas distribuée publiquement : Roboto, sur laquelle
+       elle est construite, en est le repli le plus proche. -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+  <?!= include('CSS'); ?>
+</head>
+<body>
+
+  <header class="bandeau">
+    <div>
+      <h1>PDFApplication</h1>
+      <div class="sous-titre" data-libelle="APP_SOUS_TITRE"></div>
+      <p class="accroche" data-libelle="APP_ACCROCHE"></p>
+    </div>
+    <div class="actions-bandeau">
+      <button type="button" class="bouton bouton-discret" id="boutonAPropos" data-libelle="A_PROPOS"></button>
+    </div>
+  </header>
+
+  <main class="grille" id="grilleOutils"></main>
+
+  <footer class="pied">
+    <span id="signature"></span> ·
+    <a href="https://faucheux.bzh" target="_blank" rel="noopener">faucheux.bzh</a>
+  </footer>
+
+  <!-- Fenêtre d'un outil, dont le contenu est construit à la demande. -->
+  <dialog id="modaleOutil">
+    <form method="dialog">
+      <div class="modale-entete">
+        <div>
+          <h2 id="titreOutil"></h2>
+          <p id="descriptionOutil"></p>
+        </div>
+        <button type="submit" class="fermeture" aria-label="Fermer" value="annuler">&times;</button>
+      </div>
+      <div class="modale-corps" id="corpsOutil"></div>
+      <div class="modale-pied">
+        <button type="submit" class="bouton bouton-discret" value="annuler" data-libelle="ANNULER"></button>
+        <button type="button" class="bouton bouton-principal" id="boutonLancer" data-libelle="LANCER"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Fenêtre de résultat. Le téléchargement part d'un clic du visiteur :
+       un navigateur accepte bien plus volontiers un enregistrement déclenché
+       par une action explicite que par un script, surtout dans le cadre
+       restreint où Apps Script sert ses pages. -->
+  <dialog id="modaleResultat">
+    <form method="dialog">
+      <div class="modale-entete">
+        <div>
+          <h2 id="titreResultat"></h2>
+          <p id="messageResultat"></p>
+        </div>
+        <button type="submit" class="fermeture" aria-label="Fermer">&times;</button>
+      </div>
+      <div class="modale-corps" id="corpsResultat"></div>
+      <div class="modale-pied">
+        <button type="submit" class="bouton bouton-discret" data-libelle="FERMER"></button>
+        <button type="button" class="bouton bouton-principal" id="boutonTelecharger"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Fenêtre « À propos ». -->
+  <dialog id="modaleAPropos">
+    <form method="dialog">
+      <div class="modale-entete">
+        <div>
+          <h2 data-libelle="A_PROPOS"></h2>
+        </div>
+        <button type="submit" class="fermeture" aria-label="Fermer">&times;</button>
+      </div>
+      <div class="modale-corps">
+        <p data-libelle="A_PROPOS_TEXTE"></p>
+        <p data-libelle="A_PROPOS_ORIGINE" style="color: var(--texte-faible); font-size: 0.88rem;"></p>
+        <p style="font-size: 0.88rem;">
+          <span id="versionAPropos"></span><br>
+          <a href="https://faucheux.bzh" target="_blank" rel="noopener" style="color: var(--accent-clair);">faucheux.bzh</a>
+        </p>
+      </div>
+      <div class="modale-pied">
+        <button type="submit" class="bouton bouton-principal" data-libelle="FERMER"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Écran d'attente pendant le traitement serveur. C'est un <dialog> et non
+       un calque en position fixe : celui-ci passerait sous la fenêtre de
+       l'outil, rendue dans le « top layer » par showModal(). -->
+  <dialog class="attente" id="ecranAttente" role="status" aria-live="polite">
+    <div class="boite">
+      <div class="rotor"></div>
+      <p data-libelle="TRAITEMENT"></p>
+      <p class="detail" data-libelle="TRAITEMENT_PATIENCE"></p>
+      <p class="detail" id="etapeAttente"></p>
+    </div>
+  </dialog>
+
+  <script>
+    const LIBELLES = <?!= libelles ?>;
+    const REGLAGES = <?!= reglages ?>;
+  </script>
+  <?!= include('JS'); ?>
+
+</body>
+</html>
