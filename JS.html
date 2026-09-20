@@ -318,7 +318,7 @@
       apercuContainer.style.overflow = 'hidden';
       
       apercuContainer.innerHTML = `
-        <iframe id="pdfPreviewIframe" style="width: 100%; height: 100%; border: none;"></iframe>
+        <canvas id="pdfPreviewCanvas" style="width: 100%; height: 100%; object-fit: contain;"></canvas>
         <div id="watermarkOverlay" style="position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; padding: 40px; overflow: hidden; opacity: 0.25;">
           <span id="watermarkTextPreview" style="font-size: 24px; color: black; font-family: Helvetica, sans-serif; font-weight: bold; text-align: center;"></span>
           <img id="watermarkImagePreview" style="display: none; object-fit: contain;" />
@@ -406,12 +406,47 @@
     }
 
     if (outilCourant.id === 'filigrane' && fichiersCourants.length > 0) {
-      const url = URL.createObjectURL(fichiersCourants[0]);
-      document.getElementById('pdfPreviewIframe').src = url;
       document.getElementById('apercuFiligraneContainer').style.display = 'block';
+      rendrePdfSurCanvas(fichiersCourants[0]);
     }
 
     $('#boutonLancer').disabled = false;
+  }
+  
+  function rendrePdfSurCanvas(fichier) {
+    const canvas = document.getElementById('pdfPreviewCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Si pdf.js n'est pas encore chargé, on l'injecte dynamiquement
+    if (typeof window['pdfjs-dist/build/pdf'] === 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      script.onload = () => chargerPdfCanvas(fichier, canvas, ctx);
+      document.body.appendChild(script);
+    } else {
+      chargerPdfCanvas(fichier, canvas, ctx);
+    }
+  }
+
+  function chargerPdfCanvas(fichier, canvas, ctx) {
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    
+    const lecteur = new FileReader();
+    lecteur.onload = function() {
+      const data = new Uint8Array(this.result);
+      pdfjsLib.getDocument(data).promise.then(pdf => {
+        return pdf.getPage(1);
+      }).then(page => {
+        const viewport = page.getViewport({ scale: 1.5 });
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        page.render({ canvasContext: ctx, viewport: viewport });
+      }).catch(err => {
+        console.error("Erreur de rendu de l'aperçu PDF :", err);
+      });
+    };
+    lecteur.readAsArrayBuffer(fichier);
   }
 
   function initialiserApercuFiligrane() {
