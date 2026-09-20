@@ -580,7 +580,8 @@ async function apposerFiligrane_(moteur, blobs, options) {
         aPoser.push({
           imageFileId: fichierImage.getId(),
           x: point.x, y: point.y,
-          width: largeurImage, height: hauteurImage
+          width: largeurImage, height: hauteurImage,
+          opacity: 0.25
         });
       }
 
@@ -595,7 +596,8 @@ async function apposerFiligrane_(moteur, blobs, options) {
           x: point.x,
           y: Math.max(marge, point.y - decalage),
           size: tailleTexte,
-          standardFont: "Helvetica"
+          standardFont: "Helvetica",
+          opacity: 0.25
         });
       }
 
