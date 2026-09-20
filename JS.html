@@ -317,13 +317,12 @@
       apercuContainer.style.borderRadius = 'var(--rayon-petit)';
       apercuContainer.style.overflow = 'hidden';
       
-      apercuContainer.innerHTML = `
-        <canvas id="pdfPreviewCanvas" style="width: 100%; height: 100%; object-fit: contain;"></canvas>
-        <div id="watermarkOverlay" style="position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; padding: 40px; overflow: hidden; opacity: 0.25;">
-          <span id="watermarkTextPreview" style="font-size: 24px; color: black; font-family: Helvetica, sans-serif; font-weight: bold; text-align: center;"></span>
-          <img id="watermarkImagePreview" style="display: none; object-fit: contain;" />
-        </div>
-      `;
+      apercuContainer.innerHTML =
+        '<canvas id="pdfPreviewCanvas" style="width: 100%; height: 100%; object-fit: contain;"></canvas>' +
+        '<div id="watermarkOverlay" style="position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; padding: 40px; overflow: hidden; opacity: 0.25;">' +
+          '<span id="watermarkTextPreview" style="font-size: 24px; color: black; font-family: Helvetica, sans-serif; font-weight: bold; text-align: center;"></span>' +
+          '<img id="watermarkImagePreview" style="display: none; object-fit: contain;" />' +
+        '</div>';
       corps.appendChild(apercuContainer);
       setTimeout(initialiserApercuFiligrane, 0);
     }
