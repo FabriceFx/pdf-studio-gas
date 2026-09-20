@@ -110,7 +110,8 @@
         },
         { nom: 'taille', type: 'number', libelle: 'CHAMP_TAILLE', valeur: '24', min: 6, max: 96 },
         { nom: 'largeurImage', type: 'number', libelle: 'CHAMP_LARGEUR_IMAGE', valeur: '120', min: 10, max: 600 },
-        { nom: 'hauteurImage', type: 'number', libelle: 'CHAMP_HAUTEUR_IMAGE', aide: 'CHAMP_DIMENSIONS_AIDE', valeur: '120', min: 10, max: 600 }
+        { nom: 'hauteurImage', type: 'number', libelle: 'CHAMP_HAUTEUR_IMAGE', aide: 'CHAMP_DIMENSIONS_AIDE', valeur: '120', min: 10, max: 600 },
+        { nom: 'opacite', type: 'range', libelle: 'CHAMP_OPACITE', valeur: '25', min: 1, max: 100 }
       ]
     },
     {
@@ -411,6 +412,57 @@
         aide.textContent = tr(champ.aide);
         bloc.appendChild(aide);
       }
+      return bloc;
+    }
+
+    if (champ.nom === 'opacite') {
+      entree = document.createElement('input');
+      entree.type = 'range';
+      if (champ.min !== undefined) entree.min = champ.min;
+      if (champ.max !== undefined) entree.max = champ.max;
+      entree.value = champ.valeur;
+      entree.id = 'champ_' + champ.nom;
+      entree.dataset.champ = champ.nom;
+      entree.style.flex = '1';
+      
+      const libelleValeur = document.createElement('span');
+      libelleValeur.style.marginLeft = '12px';
+      libelleValeur.style.minWidth = '45px';
+      libelleValeur.textContent = entree.value + ' %';
+      
+      const conteneurSlider = document.createElement('div');
+      conteneurSlider.style.display = 'flex';
+      conteneurSlider.style.alignItems = 'center';
+      conteneurSlider.appendChild(entree);
+      conteneurSlider.appendChild(libelleValeur);
+      
+      const apercuBg = document.createElement('div');
+      apercuBg.style.marginTop = '12px';
+      apercuBg.style.padding = '20px';
+      apercuBg.style.backgroundImage = 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)';
+      apercuBg.style.backgroundSize = '20px 20px';
+      apercuBg.style.backgroundPosition = '0 0, 0 10px, 10px -10px, -10px 0px';
+      apercuBg.style.backgroundColor = '#eee';
+      apercuBg.style.borderRadius = 'var(--rayon-petit)';
+      apercuBg.style.textAlign = 'center';
+      
+      const apercuTexte = document.createElement('div');
+      apercuTexte.textContent = 'Filigrane / Watermark';
+      apercuTexte.style.color = '#000';
+      apercuTexte.style.fontSize = '24px';
+      apercuTexte.style.fontWeight = 'bold';
+      apercuTexte.style.opacity = entree.value / 100;
+      
+      apercuBg.appendChild(apercuTexte);
+      
+      entree.addEventListener('input', () => {
+        libelleValeur.textContent = entree.value + ' %';
+        apercuTexte.style.opacity = entree.value / 100;
+      });
+      
+      bloc.appendChild(conteneurSlider);
+      bloc.appendChild(apercuBg);
+      
       return bloc;
     }
 
