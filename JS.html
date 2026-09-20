@@ -571,7 +571,15 @@
 
       const etiquette = document.createElement('label');
       etiquette.htmlFor = entree.id;
-      etiquette.textContent = champ.name;
+      
+      // Nettoyage du nom technique pour affichage
+      // Ex: "topmostSubform[0].Page1[0].numSIRET[0]" -> "numSIRET"
+      let nomPropre = champ.name.split('.').pop();
+      nomPropre = nomPropre.replace(/\[\d+\]$/g, '');
+      nomPropre = nomPropre.replace(/_/g, ' ');
+      nomPropre = nomPropre.charAt(0).toUpperCase() + nomPropre.slice(1);
+      
+      etiquette.textContent = nomPropre || champ.name;
 
       // Une case à cocher se lit mieux avant son intitulé.
       if (champ.type === 'Checkbox') {
