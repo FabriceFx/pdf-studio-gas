@@ -306,6 +306,28 @@
     outil.champs.forEach(champ => zoneChamps.appendChild(construireChamp(champ)));
     corps.appendChild(zoneChamps);
 
+    if (outil.id === 'filigrane') {
+      const apercuContainer = document.createElement('div');
+      apercuContainer.id = 'apercuFiligraneContainer';
+      apercuContainer.style.display = 'none';
+      apercuContainer.style.position = 'relative';
+      apercuContainer.style.height = '400px';
+      apercuContainer.style.marginTop = '20px';
+      apercuContainer.style.border = '1px solid var(--bordure)';
+      apercuContainer.style.borderRadius = 'var(--rayon-petit)';
+      apercuContainer.style.overflow = 'hidden';
+      
+      apercuContainer.innerHTML = `
+        <iframe id="pdfPreviewIframe" style="width: 100%; height: 100%; border: none;"></iframe>
+        <div id="watermarkOverlay" style="position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; padding: 40px; overflow: hidden; opacity: 0.25;">
+          <span id="watermarkTextPreview" style="font-size: 24px; color: black; font-family: Helvetica, sans-serif; font-weight: bold; text-align: center;"></span>
+          <img id="watermarkImagePreview" style="display: none; object-fit: contain;" />
+        </div>
+      `;
+      corps.appendChild(apercuContainer);
+      setTimeout(initialiserApercuFiligrane, 0);
+    }
+
     const message = document.createElement('div');
     message.className = 'message';
     message.id = 'messageOutil';
@@ -383,7 +405,65 @@
       return;
     }
 
+    if (outilCourant.id === 'filigrane' && fichiersCourants.length > 0) {
+      const url = URL.createObjectURL(fichiersCourants[0]);
+      document.getElementById('pdfPreviewIframe').src = url;
+      document.getElementById('apercuFiligraneContainer').style.display = 'block';
+    }
+
     $('#boutonLancer').disabled = false;
+  }
+
+  function initialiserApercuFiligrane() {
+    const texteInput = document.getElementById('champ_texte');
+    const imageInput = document.getElementById('champ_image');
+    const opaciteInput = document.getElementById('champ_opacite');
+    const emplacementSelect = document.getElementById('champ_emplacement');
+    const tailleInput = document.getElementById('champ_taille');
+    const largeurInput = document.getElementById('champ_largeurImage');
+    const hauteurInput = document.getElementById('champ_hauteurImage');
+    
+    const overlay = document.getElementById('watermarkOverlay');
+    const textPreview = document.getElementById('watermarkTextPreview');
+    const imagePreview = document.getElementById('watermarkImagePreview');
+
+    function majApercu() {
+      if (texteInput && tailleInput) {
+        textPreview.textContent = texteInput.value;
+        textPreview.style.fontSize = (tailleInput.value || 24) + 'px';
+      }
+      if (opaciteInput) {
+        overlay.style.opacity = opaciteInput.value / 100;
+      }
+      if (emplacementSelect) {
+        const pos = emplacementSelect.value;
+        if (pos === 'hautGauche') { overlay.style.alignItems = 'flex-start'; overlay.style.justifyContent = 'flex-start'; }
+        else if (pos === 'hautDroite') { overlay.style.alignItems = 'flex-start'; overlay.style.justifyContent = 'flex-end'; }
+        else if (pos === 'centre') { overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; }
+        else if (pos === 'basGauche') { overlay.style.alignItems = 'flex-end'; overlay.style.justifyContent = 'flex-start'; }
+        else if (pos === 'basDroite') { overlay.style.alignItems = 'flex-end'; overlay.style.justifyContent = 'flex-end'; }
+      }
+      
+      if (imageInput && imageInput.files && imageInput.files[0]) {
+        textPreview.style.display = 'none';
+        imagePreview.style.display = 'block';
+        if (largeurInput) imagePreview.style.width = (largeurInput.value || 120) + 'px';
+        if (hauteurInput) imagePreview.style.height = (hauteurInput.value || 120) + 'px';
+        if (!imagePreview.src || imagePreview.dataset.file !== imageInput.files[0].name) {
+          imagePreview.src = URL.createObjectURL(imageInput.files[0]);
+          imagePreview.dataset.file = imageInput.files[0].name;
+        }
+      } else {
+        imagePreview.style.display = 'none';
+        textPreview.style.display = 'block';
+      }
+    }
+
+    [texteInput, opaciteInput, emplacementSelect, tailleInput, largeurInput, hauteurInput].forEach(el => {
+      if(el) el.addEventListener('input', majApercu);
+    });
+    if(imageInput) imageInput.addEventListener('change', majApercu);
+    majApercu();
   }
 
   function construireChamp(champ) {
@@ -436,32 +516,11 @@
       conteneurSlider.appendChild(entree);
       conteneurSlider.appendChild(libelleValeur);
       
-      const apercuBg = document.createElement('div');
-      apercuBg.style.marginTop = '12px';
-      apercuBg.style.padding = '20px';
-      apercuBg.style.backgroundImage = 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)';
-      apercuBg.style.backgroundSize = '20px 20px';
-      apercuBg.style.backgroundPosition = '0 0, 0 10px, 10px -10px, -10px 0px';
-      apercuBg.style.backgroundColor = '#eee';
-      apercuBg.style.borderRadius = 'var(--rayon-petit)';
-      apercuBg.style.textAlign = 'center';
-      
-      const apercuTexte = document.createElement('div');
-      apercuTexte.textContent = 'Filigrane / Watermark';
-      apercuTexte.style.color = '#000';
-      apercuTexte.style.fontSize = '24px';
-      apercuTexte.style.fontWeight = 'bold';
-      apercuTexte.style.opacity = entree.value / 100;
-      
-      apercuBg.appendChild(apercuTexte);
-      
       entree.addEventListener('input', () => {
         libelleValeur.textContent = entree.value + ' %';
-        apercuTexte.style.opacity = entree.value / 100;
       });
       
       bloc.appendChild(conteneurSlider);
-      bloc.appendChild(apercuBg);
       
       return bloc;
     }
