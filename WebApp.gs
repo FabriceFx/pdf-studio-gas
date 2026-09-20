@@ -182,6 +182,7 @@ const DICTIONNAIRE_WEBAPP = Object.freeze({
   CHAMPS_TROUVES: { fr: "%s champ(s) trouvé(s)", en: "%s field(s) found" },
   CHAMP_TEXTE_FILIGRANE: { fr: "Texte du filigrane", en: "Watermark text" },
   CHAMP_OPACITE: { fr: "Opacité du filigrane (%)", en: "Watermark opacity (%)" },
+  CHAMP_ANGLE_FILIGRANE: { fr: "Angle (degrés)", en: "Angle (degrees)" },
   CHAMP_IMAGE: { fr: "Image (PNG ou JPEG)", en: "Image (PNG or JPEG)" },
   CHAMP_EMPLACEMENT: { fr: "Emplacement", en: "Placement" },
   PLACE_HAUT_GAUCHE: { fr: "En haut à gauche", en: "Top left" },
@@ -582,7 +583,8 @@ async function apposerFiligrane_(moteur, blobs, options) {
           imageFileId: fichierImage.getId(),
           x: point.x, y: point.y,
           width: largeurImage, height: hauteurImage,
-          opacity: options.opacite ? Number(options.opacite) / 100 : 0.25
+          opacity: options.opacite ? Number(options.opacite) / 100 : 0.25,
+          rotate: options.angle || 0
         });
       }
 
@@ -598,7 +600,8 @@ async function apposerFiligrane_(moteur, blobs, options) {
           y: Math.max(marge, point.y - decalage),
           size: tailleTexte,
           standardFont: "Helvetica",
-          opacity: options.opacite ? Number(options.opacite) / 100 : 0.25
+          opacity: options.opacite ? Number(options.opacite) / 100 : 0.25,
+          rotate: options.angle || 0
         });
       }
 

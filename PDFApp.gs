@@ -714,6 +714,7 @@ class PDFApp {
             const image = await docPdf[element.method](element.imageBytes);
             const dimensions = element.scale ? image.scale(element.scale) : image;
             const options = { ...element };
+            if (options.rotate !== undefined) options.rotate = this.PDFLib.degrees(Number(options.rotate));
             options.width = element.width || dimensions.width;
             options.height = element.height || dimensions.height;
             delete options.imageBytes;
@@ -724,6 +725,7 @@ class PDFApp {
             page.drawImage(image, options);
           } else if (element.text) {
             const options = { ...element };
+            if (options.rotate !== undefined) options.rotate = this.PDFLib.degrees(Number(options.rotate));
             if (element.standardFont || element.customFont) {
               // Le texte est connu ici et ne changera plus : sous-ensembler la
               // police n'a aucun inconvénient et divise le poids du document.

@@ -111,7 +111,8 @@
         { nom: 'taille', type: 'number', libelle: 'CHAMP_TAILLE', valeur: '24', min: 6, max: 96 },
         { nom: 'largeurImage', type: 'number', libelle: 'CHAMP_LARGEUR_IMAGE', valeur: '120', min: 10, max: 600 },
         { nom: 'hauteurImage', type: 'number', libelle: 'CHAMP_HAUTEUR_IMAGE', aide: 'CHAMP_DIMENSIONS_AIDE', valeur: '120', min: 10, max: 600 },
-        { nom: 'opacite', type: 'range', libelle: 'CHAMP_OPACITE', valeur: '25', min: 1, max: 100 }
+        { nom: 'opacite', type: 'range', libelle: 'CHAMP_OPACITE', valeur: '25', min: 1, max: 100 },
+        { nom: 'angle', type: 'number', libelle: 'CHAMP_ANGLE_FILIGRANE', valeur: '0', min: -360, max: 360 }
       ]
     },
     {
@@ -452,6 +453,7 @@
     const texteInput = document.getElementById('champ_texte');
     const imageInput = document.getElementById('champ_image');
     const opaciteInput = document.getElementById('champ_opacite');
+    const angleInput = document.getElementById('champ_angle');
     const emplacementSelect = document.getElementById('champ_emplacement');
     const tailleInput = document.getElementById('champ_taille');
     const largeurInput = document.getElementById('champ_largeurImage');
@@ -468,6 +470,10 @@
       }
       if (opaciteInput) {
         overlay.style.opacity = opaciteInput.value / 100;
+      }
+      if (angleInput) {
+        textPreview.style.transform = `rotate(${angleInput.value}deg)`;
+        imagePreview.style.transform = `rotate(${angleInput.value}deg)`;
       }
       if (emplacementSelect) {
         const pos = emplacementSelect.value;
@@ -493,7 +499,7 @@
       }
     }
 
-    [texteInput, opaciteInput, emplacementSelect, tailleInput, largeurInput, hauteurInput].forEach(el => {
+    [texteInput, opaciteInput, angleInput, emplacementSelect, tailleInput, largeurInput, hauteurInput].forEach(el => {
       if(el) el.addEventListener('input', majApercu);
     });
     if(imageInput) imageInput.addEventListener('change', majApercu);
