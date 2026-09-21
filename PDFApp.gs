@@ -92,9 +92,8 @@ class PDFApp {
       try {
         const reponse = UrlFetchApp.fetch(url, parametres);
         const code = reponse.getResponseCode();
-        const transitoire = code === 429 || (code >= 500 && code < 600);
 
-        if (!transitoire) return reponse;
+        if (!this.estTransitoire_(code)) return reponse;
         derniereErreur = new Error(`HTTP ${code} : ${reponse.getContentText().substring(0, 200)}`);
       } catch (e) {
         derniereErreur = e;
@@ -108,6 +107,24 @@ class PDFApp {
     }
 
     throw derniereErreur;
+  }
+
+  /**
+   * Indique si un code HTTP justifie une nouvelle tentative.
+   *
+   * Seuls 429 et les 5xx sont passagers : le serveur demande d'attendre ou
+   * traverse une difficulté. Un 404 ou un 403 ne changeront pas d'avis, et
+   * réessayer ne ferait que retarder l'échec de plusieurs secondes.
+   *
+   * Extrait de la boucle pour être vérifiable sans réseau : un test qui
+   * dépend des codes qu'un CDN renvoie ce jour-là mesure la santé du CDN,
+   * pas la justesse du tri.
+   *
+   * @param {number} code Code de statut HTTP.
+   * @return {boolean} Vrai si une retentative a du sens.
+   */
+  estTransitoire_(code) {
+    return code === 429 || (code >= 500 && code < 600);
   }
 
   /**
@@ -501,10 +518,21 @@ class PDFApp {
 
     const docPdf = await this.PDFLib.PDFDocument.create();
     const pages = await docPdf.copyPages(donneesPdf, donneesPdf.getPageIndices());
+    // L'orientation est rapportée à part : `getSize()` rend les dimensions du
+    // MediaBox et ignore l'entrée /Rotate. Une page pivotée d'un quart de tour
+    // conserve donc la largeur et la hauteur qu'elle avait avant rotation, et
+    // rien dans les dimensions ne permet de deviner comment elle s'affiche.
     metadonnees.pageInfo = pages.map((page, i) => {
       const { width, height } = page.getSize();
       const { x, y } = page.getPosition();
-      return { page: i + 1, pageWidth: width, pageHeight: height, defaultPositionX: x, defaultPositionY: y };
+      return {
+        page: i + 1,
+        pageWidth: width,
+        pageHeight: height,
+        defaultPositionX: x,
+        defaultPositionY: y,
+        rotation: page.getRotation().angle || 0
+      };
     });
 
     return metadonnees;

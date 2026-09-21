@@ -4,6 +4,19 @@ Tous les changements notables apportés à ce projet seront documentés dans ce 
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
+## [2.1.3] - 2026-09-21
+
+### Ajouté
+- **Métadonnées :** `getMetadata` rapporte désormais l'orientation de chaque page dans `pageInfo[].rotation`. `getSize()` de pdf-lib rend les dimensions du MediaBox et ignore l'entrée `/Rotate` : sans cette information, rien ne permettait de savoir comment une page s'affiche réellement.
+- **Tests :** `testClassificationErreursHttp_` éprouve le tri des codes HTTP sur seize valeurs, sans aucun appel réseau. Trente-quatre tests au total.
+
+### Corrigé
+- **Tests :** `testRotationPages_` vérifiait la rotation en comparant largeur et hauteur, ce qui était un contresens — la rotation ne touche pas le MediaBox. Le test portait donc une fausse accusation contre une implémentation correcte. Il s'appuie maintenant sur l'orientation rapportée, et couvre en plus le caractère cumulatif de la rotation.
+- **Tests :** `testPasDeRetentativeSurErreurDefinitive_` exigeait une réponse en moins de cinq secondes. Une défaillance passagère du CDN a déclenché une retentative — le comportement attendu — et fait échouer le test : il mesurait la santé du service tiers, pas la justesse du code. La durée est désormais rapportée sans assertion.
+
+### Modifié
+- **Moteur :** Le tri entre échec passager et définitif est extrait dans `estTransitoire_`, afin d'être vérifiable sans réseau.
+
 ## [2.1.2] - 2026-09-21
 
 ### Corrigé

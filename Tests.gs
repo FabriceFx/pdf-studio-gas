@@ -137,6 +137,7 @@ async function executerBanc_(inclureTestsLents) {
       ["Police standard appliquée à un formulaire", testPoliceStandardSurFormulaire_],
       ["Intégration d'une image et d'un texte", testIntegrationObjets_],
       ["Garde-fou du budget de temps", testGardeBudgetTemps_],
+      ["Classification des erreurs HTTP", testClassificationErreursHttp_],
       ["Pas de retentative sur une erreur définitive", testPasDeRetentativeSurErreurDefinitive_],
       ["Police personnalisée sur un texte dessiné", testPolicePersonnaliseeSurTexte_],
       ["Police personnalisée sur un formulaire", testPolicePersonnaliseeSurFormulaire_],
@@ -853,9 +854,36 @@ async function testPasDeRetentativeSurErreurDefinitive_() {
   const duree = Date.now() - debut;
 
   affirmer_(reponse.getResponseCode() >= 400, `Code inattendu : ${reponse.getResponseCode()}.`);
-  affirmer_(duree < 5000, `Retentatives déroulées à tort : ${duree} ms écoulées.`);
 
-  return `code ${reponse.getResponseCode()} rendu en ${duree} ms`;
+  // La durée est rapportée mais pas soumise à assertion. Une première version
+  // exigeait moins de cinq secondes et a fini par échouer : le CDN avait eu
+  // une défaillance passagère, que la retentative a correctement absorbée. Le
+  // test mesurait alors la santé du CDN et non la justesse du code. Le tri
+  // des codes est éprouvé sans réseau par testClassificationErreursHttp_.
+  const mention = duree > 3000 ? " (une retentative a eu lieu)" : "";
+
+  return `code ${reponse.getResponseCode()} rendu en ${duree} ms${mention}`;
+}
+
+/**
+ * Tri des codes HTTP entre échecs passagers et définitifs.
+ * Déterministe : aucun appel réseau, donc aucune dépendance à l'humeur d'un
+ * service tiers.
+ *
+ * @return {Promise<string>}
+ */
+async function testClassificationErreursHttp_() {
+  const moteur = new PDFApp({});
+
+  [429, 500, 502, 503, 504, 599].forEach(code => {
+    affirmer_(moteur.estTransitoire_(code), `${code} devrait justifier une retentative.`);
+  });
+
+  [200, 201, 301, 400, 401, 403, 404, 410, 418, 600].forEach(code => {
+    affirmer_(!moteur.estTransitoire_(code), `${code} ne devrait pas justifier de retentative.`);
+  });
+
+  return "6 codes passagers, 10 codes définitifs";
 }
 
 /**
@@ -975,6 +1003,7 @@ async function testAvertissementHorsPage_(contexte) {
  */
 async function testRotationPages_(contexte) {
   const avant = await PDFApplicationLocale_().setPDFBlob(contexte.pdf4Pages).getMetadata();
+  affirmer_(avant.pageInfo[0].rotation === 0, `Le document de départ est déjà pivoté de ${avant.pageInfo[0].rotation}°.`);
 
   const pivote = await PDFApplicationLocale_()
     .setPDFBlob(contexte.pdf4Pages)
@@ -982,28 +1011,37 @@ async function testRotationPages_(contexte) {
 
   const apres = await PDFApplicationLocale_().setPDFBlob(pivote).getMetadata();
   affirmer_(apres.numberOfPages === avant.numberOfPages, "Le nombre de pages a changé.");
+  apres.pageInfo.forEach(p => {
+    affirmer_(p.rotation === 90, `Page ${p.page} à ${p.rotation}° au lieu de 90°.`);
+  });
+
+  // Les dimensions ne bougent pas, et c'est normal : elles décrivent le
+  // MediaBox, que la rotation ne touche pas. Cette assertion existe pour
+  // que la prochaine relecture du test ne reprenne pas le contresens.
   affirmer_(
-    Math.round(apres.pageInfo[0].pageWidth) === Math.round(avant.pageInfo[0].pageHeight),
-    `Dimensions inchangées : ${Math.round(apres.pageInfo[0].pageWidth)} attendu ` +
-    `${Math.round(avant.pageInfo[0].pageHeight)}.`
+    Math.round(apres.pageInfo[0].pageWidth) === Math.round(avant.pageInfo[0].pageWidth),
+    "Le MediaBox a changé : la rotation ne devrait pas y toucher."
+  );
+
+  // Rotation relative : un second quart de tour doit porter à 180°.
+  const deuxFois = await PDFApplicationLocale_().setPDFBlob(pivote).rotatePages({ angle: 90 });
+  const metaDeuxFois = await PDFApplicationLocale_().setPDFBlob(deuxFois).getMetadata();
+  affirmer_(
+    metaDeuxFois.pageInfo[0].rotation === 180,
+    `Rotation non cumulative : ${metaDeuxFois.pageInfo[0].rotation}° au lieu de 180°.`
   );
 
   // Rotation ciblée : seule la page 2 doit bouger.
   const partiel = await PDFApplicationLocale_()
     .setPDFBlob(contexte.pdf4Pages)
-    .rotatePages({ angle: 90, pages: [2] });
+    .rotatePages({ angle: 270, pages: [2] });
 
   const metaPartiel = await PDFApplicationLocale_().setPDFBlob(partiel).getMetadata();
-  affirmer_(
-    Math.round(metaPartiel.pageInfo[0].pageWidth) === Math.round(avant.pageInfo[0].pageWidth),
-    "La page 1 a pivoté alors qu'elle n'était pas visée."
-  );
-  affirmer_(
-    Math.round(metaPartiel.pageInfo[1].pageWidth) === Math.round(avant.pageInfo[1].pageHeight),
-    "La page 2 n'a pas pivoté."
-  );
+  affirmer_(metaPartiel.pageInfo[0].rotation === 0, "La page 1 a pivoté alors qu'elle n'était pas visée.");
+  affirmer_(metaPartiel.pageInfo[1].rotation === 270, `La page 2 est à ${metaPartiel.pageInfo[1].rotation}° au lieu de 270°.`);
+  affirmer_(metaPartiel.pageInfo[2].rotation === 0, "La page 3 a pivoté alors qu'elle n'était pas visée.");
 
-  return "rotation globale et rotation ciblée conformes";
+  return "rotation globale, cumulative et ciblée conformes";
 }
 
 /**

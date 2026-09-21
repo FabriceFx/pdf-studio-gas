@@ -17,6 +17,9 @@
  * @property {number} pageHeight - Hauteur de la page en points.
  * @property {number} defaultPositionX - Position X d'origine de la page.
  * @property {number} defaultPositionY - Position Y d'origine de la page.
+ * @property {number} rotation - Orientation en degrés : 0, 90, 180 ou 270.
+ *   Rapportée à part car pageWidth et pageHeight décrivent le MediaBox et
+ *   ne tiennent pas compte de la rotation.
  */
 
 /**
