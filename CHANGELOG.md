@@ -4,6 +4,15 @@ Tous les changements notables apportés à ce projet seront documentés dans ce 
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
+## [2.1.2] - 2026-09-21
+
+### Corrigé
+- **Outils en deux temps :** Choisir un autre document après une lecture laissait les champs du document précédent à l'écran, le bouton proposant d'écrire. Selon les cas, cela produisait une erreur « champ introuvable » ou, si les noms coïncidaient, des valeurs déposées au mauvais endroit sans aucun signalement. La lecture est désormais annulée dès qu'un fichier change.
+
+### Ajouté
+- **Tests :** Cinq tests couvrant les fonctions pures de `WebApp.gs` — interprétation d'une saisie de pages, placement d'un élément, construction de l'en-tête et des métadonnées, nom de fichier. Ce sont elles qui interprètent la saisie humaine, et elles étaient jusqu'ici les seules du projet sans aucune couverture. Trente-trois tests au total.
+- **Diagnostic :** `diagnostiquerFileDAttente()` vérifie l'hypothèse sur laquelle repose l'application web — que le moteur vide la file des micro-tâches avant de clore l'exécution. `lancerTacheDiagnostic()` et `relireTacheDiagnostic()` éprouvent le cycle complet lancement puis interrogation en deux exécutions, sans passer par le navigateur.
+
 ## [2.1.1] - 2026-09-21
 
 ### Corrigé

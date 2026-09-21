@@ -142,7 +142,12 @@ async function executerBanc_(inclureTestsLents) {
       ["Police personnalisée sur un formulaire", testPolicePersonnaliseeSurFormulaire_],
       ["Avertissement sur un élément hors page", testAvertissementHorsPage_],
       ["Rotation des pages", testRotationPages_],
-      ["Angle de rotation invalide refusé", testRotationAngleInvalide_]
+      ["Angle de rotation invalide refusé", testRotationAngleInvalide_],
+      ["Analyse d'une saisie de pages", testAnalyserPages_],
+      ["Placement d'un élément sur la page", testPlacer_],
+      ["Construction de l'en-tête depuis le formulaire", testEnTeteDepuisFormulaire_],
+      ["Construction des métadonnées depuis le formulaire", testMetadonneesDepuisFormulaire_],
+      ["Nom de fichier sans extension", testNomSansExtension_]
     ];
 
     if (inclureTestsLents) {
@@ -1020,6 +1025,161 @@ async function testRotationAngleInvalide_(contexte) {
   );
 
   return "angle 45 refusé, page 9 refusée";
+}
+
+// ============================================================================
+// Couche web : fonctions pures de WebApp.gs
+//
+// Elles n'appellent aucun service Google et ne dépendent d'aucune fixture,
+// mais ce sont elles qui interprètent la saisie humaine — donc celles où les
+// erreurs arrivent réellement. Les laisser sans test alors que le moteur est
+// couvert à vingt-huit reprises n'avait aucune justification.
+// ============================================================================
+
+/**
+ * Compare deux tableaux de nombres.
+ *
+ * @param {number[]} obtenu Valeur produite.
+ * @param {number[]} attendu Valeur attendue.
+ * @param {string} contexte Description pour le message d'échec.
+ * @return {void}
+ */
+function affirmerListe_(obtenu, attendu, contexte) {
+  affirmer_(
+    JSON.stringify(obtenu) === JSON.stringify(attendu),
+    `${contexte} : [${obtenu}] au lieu de [${attendu}].`
+  );
+}
+
+/**
+ * Interprétation d'une saisie de pages : numéros, intervalles, doublons,
+ * désordre, et saisies qui ne désignent aucune page.
+ *
+ * @return {Promise<string>}
+ */
+async function testAnalyserPages_() {
+  affirmerListe_(analyserPages_("1, 3, 5-8"), [1, 3, 5, 6, 7, 8], "Intervalle mêlé à des numéros");
+  affirmerListe_(analyserPages_("3,1,2"), [1, 2, 3], "Tri croissant");
+  affirmerListe_(analyserPages_("2, 2, 2"), [2], "Dédoublonnage");
+  affirmerListe_(analyserPages_("  4  "), [4], "Espaces superflus");
+  affirmerListe_(analyserPages_("2 - 4"), [2, 3, 4], "Espaces dans l'intervalle");
+
+  await affirmerEchec_(() => analyserPages_(""), "page");
+  await affirmerEchec_(() => analyserPages_("abc"), "page");
+  await affirmerEchec_(() => analyserPages_("0"), "page");
+
+  // Un intervalle à l'envers ne désigne aucune page : l'erreur vaut mieux
+  // qu'une sélection vide acceptée en silence.
+  await affirmerEchec_(() => analyserPages_("5-3"), "page");
+
+  return "5 saisies valides interprétées, 4 saisies fautives refusées";
+}
+
+/**
+ * Placement d'un élément selon les cinq emplacements proposés.
+ * L'origine d'un PDF étant en bas à gauche, « en haut » correspond à une
+ * ordonnée élevée — c'est l'inversion la plus facile à commettre.
+ *
+ * @return {Promise<string>}
+ */
+async function testPlacer_() {
+  const page = { pageWidth: 600, pageHeight: 800 };
+  const l = 100;
+  const h = 50;
+  const m = 40;
+
+  const basGauche = placer_("basGauche", page, l, h, m);
+  affirmer_(basGauche.x === 40 && basGauche.y === 40, `basGauche : ${JSON.stringify(basGauche)}`);
+
+  const hautGauche = placer_("hautGauche", page, l, h, m);
+  affirmer_(hautGauche.x === 40 && hautGauche.y === 710, `hautGauche : ${JSON.stringify(hautGauche)}`);
+
+  const hautDroite = placer_("hautDroite", page, l, h, m);
+  affirmer_(hautDroite.x === 460 && hautDroite.y === 710, `hautDroite : ${JSON.stringify(hautDroite)}`);
+
+  const basDroite = placer_("basDroite", page, l, h, m);
+  affirmer_(basDroite.x === 460 && basDroite.y === 40, `basDroite : ${JSON.stringify(basDroite)}`);
+
+  const centre = placer_("centre", page, l, h, m);
+  affirmer_(centre.x === 250 && centre.y === 375, `centre : ${JSON.stringify(centre)}`);
+
+  affirmer_(hautGauche.y > basGauche.y, "L'ordonnée du haut devrait dépasser celle du bas.");
+
+  // Un élément plus grand que la page ne doit pas produire de coordonnée
+  // négative, qui le ferait disparaître entièrement.
+  const enorme = placer_("hautDroite", page, 900, 900, m);
+  affirmer_(enorme.x >= 0 && enorme.y >= 0, `Élément surdimensionné : ${JSON.stringify(enorme)}`);
+
+  return "5 emplacements conformes, débordement borné";
+}
+
+/**
+ * Seules les zones renseignées doivent être transmises : une zone vide
+ * occuperait de la largeur et décalerait les autres.
+ *
+ * @return {Promise<string>}
+ */
+async function testEnTeteDepuisFormulaire_() {
+  const complet = enTeteDepuisFormulaire_({
+    enteteGauche: "Gauche",
+    enteteCentre: "  ",
+    enteteDroite: "Droite",
+    piedCentre: "Pied"
+  });
+
+  affirmer_(!!complet.header, "En-tête absent.");
+  affirmer_(!!complet.header.gauche, "Zone de gauche absente.");
+  affirmer_(!!complet.header.droite, "Zone de droite absente.");
+  affirmer_(!complet.header.centre, "Une zone vide a été transmise.");
+  affirmer_(complet.header.gauche.alignment === "left", "Alignement à gauche incorrect.");
+  affirmer_(!!complet.footer && !!complet.footer.centre, "Pied de page absent.");
+
+  const vide = enTeteDepuisFormulaire_({ enteteGauche: "", piedCentre: "   " });
+  affirmer_(!vide.header && !vide.footer, `Un formulaire vide a produit ${JSON.stringify(vide)}.`);
+
+  return "zones vides écartées, alignements corrects";
+}
+
+/**
+ * Un champ laissé vide ne doit pas être écrit : une chaîne vide effacerait
+ * la valeur que porte déjà le document.
+ *
+ * @return {Promise<string>}
+ */
+async function testMetadonneesDepuisFormulaire_() {
+  const obtenu = metadonneesDepuisFormulaire_({
+    title: "  Rapport  ",
+    author: "",
+    subject: "   ",
+    keywords: "pdf, test , outils"
+  });
+
+  affirmer_(obtenu.title === "Rapport", `Titre non nettoyé : « ${obtenu.title} ».`);
+  affirmer_(!("author" in obtenu), "Un auteur vide a été transmis.");
+  affirmer_(!("subject" in obtenu), "Un sujet vide a été transmis.");
+  affirmerListe_(obtenu.keywords, ["pdf", "test", "outils"], "Mots-clés");
+
+  affirmer_(
+    Object.keys(metadonneesDepuisFormulaire_({})).length === 0,
+    "Un formulaire vide devrait produire un objet vide."
+  );
+
+  return "champs vides ignorés, mots-clés découpés";
+}
+
+/**
+ * Le nom sert à composer celui du fichier produit.
+ *
+ * @return {Promise<string>}
+ */
+async function testNomSansExtension_() {
+  affirmer_(nomSansExtension_("rapport.pdf") === "rapport", "Extension simple.");
+  affirmer_(nomSansExtension_("rapport.final.pdf") === "rapport.final", "Points multiples.");
+  affirmer_(nomSansExtension_("sans_extension") === "sans_extension", "Sans extension.");
+  affirmer_(nomSansExtension_("") === "document", "Nom vide.");
+  affirmer_(nomSansExtension_(null) === "document", "Nom absent.");
+
+  return "5 formes de nom traitées";
 }
 
 /**

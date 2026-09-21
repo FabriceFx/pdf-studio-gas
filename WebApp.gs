@@ -647,6 +647,101 @@ function placer_(emplacement, page, largeur, hauteur, marge) {
 }
 
 // ============================================================================
+// Diagnostic
+// ============================================================================
+
+/**
+ * Vérifie l'hypothèse sur laquelle repose toute l'application web.
+ *
+ * `serveurLancerTache` rend la main aussitôt et dépose son résultat depuis un
+ * `.then`. Cela ne fonctionne que si le moteur vide la file des micro-tâches
+ * avant de clore l'exécution. Si ce n'est pas le cas, le résultat n'est jamais
+ * écrit et le client interroge en vain jusqu'à l'abandon — sans aucune erreur
+ * pour le signaler, ce qui rend la panne particulièrement obscure.
+ *
+ * À lancer depuis l'éditeur Apps Script et à lire dans le journal.
+ *
+ * @return {void}
+ */
+function diagnostiquerFileDAttente() {
+  const trace = [];
+
+  (async () => {
+    trace.push("1 corps asynchrone démarré");
+    await Promise.resolve();
+    trace.push("3 reprise après le premier await");
+    await Promise.resolve();
+    trace.push("4 reprise après le second await");
+  })();
+
+  trace.push("2 corps synchrone terminé");
+
+  console.log("=== Diagnostic de la file des micro-tâches ===");
+  console.log(`Pendant l'exécution synchrone : ${trace.join(" | ")}`);
+  console.log("Si aucune ligne « verdict » ne suit, les micro-tâches ne sont pas traitées.");
+
+  Promise.resolve().then(() => {
+    console.log(`Depuis une micro-tâche : ${trace.join(" | ")}`);
+    console.log(trace.length >= 4
+      ? "verdict ✅ Les micro-tâches s'exécutent avant la fin de l'exécution : l'architecture en deux appels est valide."
+      : "verdict ❌ Les reprises après await n'ont pas eu lieu : serveurLancerTache ne déposera jamais son résultat."
+    );
+  });
+}
+
+/**
+ * Épreuve de bout en bout du cycle lancement puis interrogation, sans passer
+ * par le navigateur.
+ *
+ * À lancer en deux temps depuis l'éditeur : cette fonction d'abord, puis
+ * `relireTacheDiagnostic` avec le jeton journalisé. Deux exécutions distinctes
+ * sont nécessaires, car c'est précisément ce que fait le client — et c'est la
+ * seule façon de vérifier que le résultat survit à la fin de la première.
+ *
+ * Dépend des fixtures de Tests.gs pour disposer d'un PDF.
+ *
+ * @return {void}
+ */
+function lancerTacheDiagnostic() {
+  const dossier = dossierTests_();
+  const presentation = creerPresentationTest_(dossier, 2);
+  const pdf = DriveApp.getFileById(presentation.getId()).getBlob();
+
+  const depart = serveurLancerTache(
+    "extraire",
+    [{ nom: "diagnostic.pdf", type: MimeType.PDF, base64: Utilities.base64Encode(pdf.getBytes()) }],
+    { pages: "1" }
+  );
+
+  console.log(`Jeton : ${depart.jeton}`);
+  console.log(`État immédiat : ${JSON.stringify(lireEtat_(depart.jeton))}`);
+  console.log(`Lancez maintenant : relireTacheDiagnostic("${depart.jeton}")`);
+
+  dossier.setTrashed(true);
+}
+
+/**
+ * Relit l'état d'une tâche de diagnostic, dans une exécution séparée.
+ *
+ * @param {string} jeton Jeton journalisé par lancerTacheDiagnostic.
+ * @return {void}
+ */
+function relireTacheDiagnostic(jeton) {
+  const etat = lireEtat_(jeton);
+  console.log(`État relu : ${JSON.stringify(etat)}`);
+
+  if (!etat) {
+    console.log("verdict ❌ Aucun état : le cache a expiré, ou rien n'a jamais été écrit.");
+  } else if (etat.etat === "termine") {
+    console.log("verdict ✅ Le résultat a bien été déposé après le retour du premier appel.");
+  } else if (etat.etat === "erreur") {
+    console.log(`verdict ⚠️ Le traitement a échoué, mais le mécanisme fonctionne : ${etat.message}`);
+  } else {
+    console.log("verdict ❌ L'état est resté « encours » : le .then ne s'est jamais exécuté.");
+  }
+}
+
+// ============================================================================
 // État des traitements
 // ============================================================================
 

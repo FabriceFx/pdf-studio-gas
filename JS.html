@@ -382,6 +382,12 @@
     const fichiers = Array.from(liste).filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf');
     fichiersCourants = outil.fichiers === 'plusieurs' ? fichiers : fichiers.slice(0, 1);
 
+    // Un nouveau document annule la lecture précédente. Sans cela, les champs
+    // affichés restent ceux de l'ancien fichier et le bouton propose d'écrire :
+    // au mieux une erreur « champ introuvable », au pire des valeurs déposées
+    // au mauvais endroit dans un document qui accepte les mêmes noms.
+    oublierLecture(outil);
+
     const affichage = $('#listeFichiers');
     const message = $('#messageOutil');
     message.textContent = '';
@@ -536,6 +542,33 @@
     });
     if(imageInput) imageInput.addEventListener('change', majApercu);
     majApercu();
+  }
+
+  /**
+   * Ramène un outil en deux temps à son état de départ : la lecture est
+   * annulée, le bouton reprend son libellé de lecture, et les champs
+   * découverts dans le document précédent disparaissent.
+   */
+  function oublierLecture(outil) {
+    if (!outil || !outil.deuxTemps || !outil.lecturefaite) return;
+
+    delete outil.lecturefaite;
+
+    const zone = $('#zoneChamps');
+    if (zone) {
+      if (outil.champsDynamiques) {
+        zone.innerHTML = '';
+        zone.style.display = 'none';
+      } else {
+        zone.querySelectorAll('[data-champ]').forEach(el => { el.value = ''; });
+        zone.style.display = 'none';
+      }
+    }
+
+    const resume = document.getElementById('resumeMetadonnees');
+    if (resume) resume.remove();
+
+    $('#boutonLancer').textContent = tr(outil.champsDynamiques ? 'LIRE_FORMULAIRE' : 'LIRE_METADONNEES');
   }
 
   function construireChamp(champ) {
