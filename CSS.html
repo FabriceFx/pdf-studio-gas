@@ -303,6 +303,32 @@
     box-shadow: inset 0 0 0 1px var(--accent);
   }
 
+  /* Curseur : la piste et la poignée reprennent le bleu Google, que le style
+     natif du navigateur ignorerait. */
+  .curseur { display: flex; align-items: center; gap: 12px; }
+
+  .curseur input[type="range"] {
+    flex: 1;
+    height: 4px;
+    accent-color: var(--accent);
+    background: var(--bordure);
+    border-radius: 2px;
+    cursor: pointer;
+  }
+
+  .curseur input[type="range"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 6px;
+  }
+
+  .valeur-curseur {
+    min-width: 46px;
+    text-align: right;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--texte-attenue);
+  }
+
   .champ.case {
     grid-template-columns: auto 1fr;
     align-items: center;

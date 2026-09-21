@@ -279,6 +279,7 @@
   let outilCourant = null;
   let fichiersCourants = [];
   let imageCourante = null;
+  let chargementPdfJs = null;
 
   function ouvrirOutil(outil) {
     outilCourant = outil;
@@ -312,17 +313,24 @@
       apercuContainer.id = 'apercuFiligraneContainer';
       apercuContainer.style.display = 'none';
       apercuContainer.style.position = 'relative';
-      apercuContainer.style.height = '400px';
+      // Hauteur souple : 400 px fixes dans une modale plafonnée à 60 vh
+      // imposaient un défilement permanent sur un portable.
+      apercuContainer.style.height = 'min(300px, 34vh)';
       apercuContainer.style.marginTop = '20px';
       apercuContainer.style.border = '1px solid var(--bordure)';
       apercuContainer.style.borderRadius = 'var(--rayon-petit)';
       apercuContainer.style.overflow = 'hidden';
       
+      // transform-origin au coin inférieur gauche : pdf-lib pivote un élément
+      // autour de son point d'ancrage, alors que CSS pivote par défaut autour
+      // du centre. Sans cet alignement, l'aperçu et le document produit
+      // divergent dès que l'angle n'est pas nul — un aperçu qui ment étant
+      // plus nuisible qu'une absence d'aperçu.
       apercuContainer.innerHTML =
         '<canvas id="pdfPreviewCanvas" style="width: 100%; height: 100%; object-fit: contain;"></canvas>' +
         '<div id="watermarkOverlay" style="position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; padding: 40px; overflow: hidden; opacity: 0.25;">' +
-          '<span id="watermarkTextPreview" style="font-size: 24px; color: black; font-family: Helvetica, sans-serif; font-weight: bold; text-align: center;"></span>' +
-          '<img id="watermarkImagePreview" style="display: none; object-fit: contain;" />' +
+          '<span id="watermarkTextPreview" style="font-size: 24px; color: black; font-family: Helvetica, sans-serif; font-weight: bold; text-align: center; transform-origin: 0 100%;"></span>' +
+          '<img id="watermarkImagePreview" style="display: none; object-fit: contain; transform-origin: 0 100%;" />' +
         '</div>';
       corps.appendChild(apercuContainer);
       setTimeout(initialiserApercuFiligrane, 0);
@@ -417,19 +425,45 @@
     const canvas = document.getElementById('pdfPreviewCanvas');
     const ctx = canvas.getContext('2d');
     
-    // Si pdf.js n'est pas encore chargé, on l'injecte dynamiquement
-    if (typeof window['pdfjs-dist/build/pdf'] === 'undefined') {
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-      script.onload = () => chargerPdfCanvas(fichier, canvas, ctx);
-      document.body.appendChild(script);
-    } else {
-      chargerPdfCanvas(fichier, canvas, ctx);
+    // pdf.js s'enregistre sous window.pdfjsLib dans un navigateur.
+    // « pdfjs-dist/build/pdf » est le nom de module AMD, présent uniquement
+    // quand un chargeur AMD est là : s'y fier laissait la condition toujours
+    // vraie, réinjectait le script à chaque fichier choisi, et faisait échouer
+    // la suite sur un objet indéfini.
+    if (typeof window.pdfjsLib === 'undefined') {
+      if (chargementPdfJs) {
+        chargementPdfJs.then(() => chargerPdfCanvas(fichier, canvas, ctx));
+        return;
+      }
+      chargementPdfJs = new Promise((resoudre, rejeter) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        script.onload = resoudre;
+        script.onerror = () => rejeter(new Error('pdf.js indisponible'));
+        document.body.appendChild(script);
+      });
+      chargementPdfJs
+        .then(() => chargerPdfCanvas(fichier, canvas, ctx))
+        .catch(e => signalerApercuIndisponible(e));
+      return;
     }
+
+    chargerPdfCanvas(fichier, canvas, ctx);
+  }
+
+  /**
+   * L'aperçu est un confort, pas une condition du traitement : son échec est
+   * signalé discrètement et n'empêche pas d'appliquer le filigrane.
+   */
+  function signalerApercuIndisponible(erreur) {
+    console.warn("Aperçu indisponible :", erreur);
+    const conteneur = document.getElementById('apercuFiligraneContainer');
+    if (conteneur) conteneur.style.display = 'none';
   }
 
   function chargerPdfCanvas(fichier, canvas, ctx) {
-    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    const pdfjsLib = window.pdfjsLib;
+    if (!pdfjsLib) return signalerApercuIndisponible(new Error('pdf.js non chargé'));
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     
     const lecteur = new FileReader();
@@ -442,9 +476,7 @@
         canvas.width = viewport.width;
         canvas.height = viewport.height;
         page.render({ canvasContext: ctx, viewport: viewport });
-      }).catch(err => {
-        console.error("Erreur de rendu de l'aperçu PDF :", err);
-      });
+      }).catch(err => signalerApercuIndisponible(err));
     };
     lecteur.readAsArrayBuffer(fichier);
   }
@@ -535,7 +567,9 @@
       return bloc;
     }
 
-    if (champ.nom === 'opacite') {
+    // Aiguillage sur le type et non sur le nom du champ : un second curseur
+    // ajouté plus tard fonctionnerait sans retoucher cette fonction.
+    if (champ.type === 'range') {
       entree = document.createElement('input');
       entree.type = 'range';
       if (champ.min !== undefined) entree.min = champ.min;
@@ -543,25 +577,29 @@
       entree.value = champ.valeur;
       entree.id = 'champ_' + champ.nom;
       entree.dataset.champ = champ.nom;
-      entree.style.flex = '1';
-      
+
       const libelleValeur = document.createElement('span');
-      libelleValeur.style.marginLeft = '12px';
-      libelleValeur.style.minWidth = '45px';
-      libelleValeur.textContent = entree.value + ' %';
-      
-      const conteneurSlider = document.createElement('div');
-      conteneurSlider.style.display = 'flex';
-      conteneurSlider.style.alignItems = 'center';
-      conteneurSlider.appendChild(entree);
-      conteneurSlider.appendChild(libelleValeur);
-      
+      libelleValeur.className = 'valeur-curseur';
+      libelleValeur.textContent = entree.value + (champ.unite || ' %');
+
+      const conteneur = document.createElement('div');
+      conteneur.className = 'curseur';
+      conteneur.appendChild(entree);
+      conteneur.appendChild(libelleValeur);
+
       entree.addEventListener('input', () => {
-        libelleValeur.textContent = entree.value + ' %';
+        libelleValeur.textContent = entree.value + (champ.unite || ' %');
       });
-      
-      bloc.appendChild(conteneurSlider);
-      
+
+      bloc.appendChild(conteneur);
+
+      if (champ.aide) {
+        const aide = document.createElement('span');
+        aide.className = 'aide';
+        aide.textContent = tr(champ.aide);
+        bloc.appendChild(aide);
+      }
+
       return bloc;
     }
 

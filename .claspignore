@@ -1,0 +1,22 @@
+# Fichiers exclus du push vers le projet Apps Script.
+#
+# En l'absence de ce fichier, clasp pousse tout ce qui porte une extension
+# connue — .gs, .js, .html, .json — sous le dossier racine, node_modules
+# compris. Une seule dépendance npm y ajoute plus d'un millier de fichiers
+# et fait échouer le push, ou le fait réussir à moitié.
+#
+# La liste fonctionne par exclusion puis réautorisation, comme .gitignore.
+
+**/**
+
+!appsscript.json
+!Api.gs
+!ChargeurLibrairies.gs
+!Configuration.gs
+!Inspection.gs
+!PDFApp.gs
+!Tests.gs
+!WebApp.gs
+!CSS.html
+!Index.html
+!JS.html

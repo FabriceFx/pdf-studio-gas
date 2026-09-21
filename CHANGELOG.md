@@ -4,6 +4,23 @@ Tous les changements notables apportés à ce projet seront documentés dans ce 
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
+## [2.1.1] - 2026-09-21
+
+### Corrigé
+- **Aperçu du filigrane :** L'aperçu ne s'affichait jamais. La détection de pdf.js interrogeait `window['pdfjs-dist/build/pdf']`, qui est le nom de module AMD et non la globale du navigateur : la condition restait toujours vraie, un script était réinjecté à chaque fichier choisi, et le rendu échouait sur un objet indéfini. La globale correcte est `window.pdfjsLib`.
+- **Aperçu du filigrane :** L'aperçu ne correspondait pas au document produit dès que l'angle n'était pas nul. pdf-lib pivote un élément autour de son point d'ancrage, CSS autour de son centre : `transform-origin` est désormais aligné sur le coin inférieur gauche.
+- **Avertissement hors page :** Le contrôle ignorait la rotation et laissait passer un filigrane incliné sorti de la page. Le rectangle englobant est maintenant calculé après rotation.
+- **Journalisation :** Un commentaire JSDoc orphelin, laissé par l'ajout de `avertirSiPoliceVolumineuse_`, est replacé sur la méthode qu'il décrit.
+
+### Ajouté
+- **Outillage :** Fichier `.claspignore`. Sans lui, `clasp push` tentait d'envoyer `node_modules` — plus d'un millier de fichiers en `.js`, `.html` et `.json` depuis l'installation de jsdom.
+- **UI :** Style propre au curseur d'opacité, qui conservait jusqu'ici l'apparence native du navigateur.
+
+### Modifié
+- **UI :** L'aiguillage des champs de type curseur se fait sur le type et non sur le nom du champ.
+- **UI :** La hauteur de l'aperçu s'adapte à la fenêtre, au lieu de 400 px fixes qui imposaient un défilement permanent sur portable.
+- **Outillage :** `.gitignore` exclut `node_modules`, les polices et les sorties d'essai.
+
 ## [2.1.0] - 2026-09-20
 
 ### Ajouté
@@ -16,7 +33,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 ## [2.0.0] - 2026-09-20
 
 ### Ajouté
-- **Web App (Nouveau) :** Création de l'interface utilisateur autonome complète de type "Single Page Application" (SPA) avec design Glassmorphism et modales natives HTML5 (`<dialog>`).
+- **Web App (Nouveau) :** Création de l'interface utilisateur autonome complète de type "Single Page Application" (SPA), avec modales natives HTML5 (`<dialog>`) et un habillage conforme aux interfaces Google Workspace.
 - **Moteur Asynchrone :** Mise en place d'un système de jetons par `CacheService` pour contourner la limite de temps de 6 minutes de Google Apps Script.
 - **Gestion Google Drive :** Basculement automatique du téléchargement vers Google Drive pour les fichiers dépassant 4 Mo (limite des transferts Base64 via `google.script.run`).
 - **Sécurité :** Nettoyage automatique des fichiers temporaires (Trash) déposés sur Drive lors des traitements lourds (comme l'application d'images dans un filigrane).

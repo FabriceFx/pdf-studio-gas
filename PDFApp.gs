@@ -148,21 +148,6 @@ class PDFApp {
   }
 
   /**
-   * Signale un élément dessiné en dehors des limites de la page.
-   *
-   * pdf-lib accepte n'importe quelles coordonnées sans se plaindre : un élément
-   * placé hors cadre est simplement absent du rendu, sans exception ni trace.
-   * C'est le mode d'échec le plus coûteux à diagnostiquer, parce que rien ne
-   * distingue « mal placé » de « jamais ajouté ». Le piège est d'autant plus
-   * courant que les formats diffèrent beaucoup : 595 × 842 points pour un A4
-   * portrait, 720 × 405 pour un export Google Slides en paysage.
-   *
-   * @param {Object} page Page pdf-lib.
-   * @param {Object} options Options de dessin, contenant x et y.
-   * @param {string} description Élément concerné, pour le message.
-   * @return {void}
-   */
-  /**
    * Signale une police volumineuse embarquée sans sous-ensemble.
    *
    * Sans sous-ensemble, la police entière est copiée dans chaque document :
@@ -187,6 +172,26 @@ class PDFApp {
     }
   }
 
+  /**
+   * Signale un élément dessiné en dehors des limites de la page.
+   *
+   * pdf-lib accepte n'importe quelles coordonnées sans se plaindre : un élément
+   * placé hors cadre est simplement absent du rendu, sans exception ni trace.
+   * C'est le mode d'échec le plus coûteux à diagnostiquer, parce que rien ne
+   * distingue « mal placé » de « jamais ajouté ». Le piège est d'autant plus
+   * courant que les formats diffèrent beaucoup : 595 × 842 points pour un A4
+   * portrait, 720 × 405 pour un export Google Slides en paysage.
+   *
+   * La rotation est prise en compte. pdf-lib pivote un élément autour de son
+   * point d'ancrage, pas de son centre : le cadre réellement occupé n'est donc
+   * plus le rectangle largeur × hauteur, et un filigrane incliné peut sortir
+   * de la page alors que son ancre y est bien.
+   *
+   * @param {Object} page Page pdf-lib.
+   * @param {Object} options Options de dessin, contenant x et y.
+   * @param {string} description Élément concerné, pour le message.
+   * @return {void}
+   */
   avertirSiHorsPage_(page, options, description) {
     if (!CONFIG.AVERTIR_HORS_PAGE) return;
 
@@ -198,14 +203,65 @@ class PDFApp {
     const largeur = typeof options.width === "number" ? options.width : 0;
     const hauteur = typeof options.height === "number" ? options.height : 0;
 
-    if (x < 0 || y < 0 || x + largeur > largeurPage || y + hauteur > hauteurPage) {
+    const cadre = this.cadreOccupe_(x, y, largeur, hauteur, this.angleDe_(options.rotate));
+
+    if (cadre.xMin < 0 || cadre.yMin < 0 || cadre.xMax > largeurPage || cadre.yMax > hauteurPage) {
+      const mentionAngle = this.angleDe_(options.rotate)
+        ? `, pivoté de ${Math.round(this.angleDe_(options.rotate))}°`
+        : "";
       console.warn(
         `${description} sort de la page : position (${Math.round(x)}, ${Math.round(y)}), ` +
-        `encombrement ${Math.round(largeur)} × ${Math.round(hauteur)}, ` +
+        `encombrement ${Math.round(largeur)} × ${Math.round(hauteur)}${mentionAngle}, ` +
         `page ${Math.round(largeurPage)} × ${Math.round(hauteurPage)} points. ` +
-        `L'élément ne sera pas visible. Rappel : l'origine d'un PDF est en bas à gauche.`
+        `L'élément ne sera pas visible en entier. Rappel : l'origine d'un PDF est en bas à gauche.`
       );
     }
+  }
+
+  /**
+   * Extrait l'angle en degrés d'une valeur de rotation pdf-lib.
+   *
+   * @param {Object|number} rotation Objet renvoyé par degrees(), ou un nombre.
+   * @return {number} L'angle en degrés, 0 par défaut.
+   */
+  angleDe_(rotation) {
+    if (rotation == null) return 0;
+    if (typeof rotation === "number") return rotation;
+    if (typeof rotation.angle === "number") {
+      // pdf-lib exprime aussi les rotations en radians selon le constructeur.
+      return rotation.type === "radians" ? rotation.angle * 180 / Math.PI : rotation.angle;
+    }
+    return 0;
+  }
+
+  /**
+   * Calcule le rectangle englobant d'un élément pivoté autour de son ancre.
+   *
+   * @param {number} x Abscisse de l'ancre.
+   * @param {number} y Ordonnée de l'ancre.
+   * @param {number} largeur Largeur avant rotation.
+   * @param {number} hauteur Hauteur avant rotation.
+   * @param {number} angle Angle en degrés.
+   * @return {{xMin: number, yMin: number, xMax: number, yMax: number}}
+   */
+  cadreOccupe_(x, y, largeur, hauteur, angle) {
+    if (!angle) {
+      return { xMin: x, yMin: y, xMax: x + largeur, yMax: y + hauteur };
+    }
+
+    const radians = angle * Math.PI / 180;
+    const cos = Math.cos(radians);
+    const sin = Math.sin(radians);
+
+    const coins = [[0, 0], [largeur, 0], [largeur, hauteur], [0, hauteur]]
+      .map(([dx, dy]) => [x + dx * cos - dy * sin, y + dx * sin + dy * cos]);
+
+    return {
+      xMin: Math.min(...coins.map(c => c[0])),
+      yMin: Math.min(...coins.map(c => c[1])),
+      xMax: Math.max(...coins.map(c => c[0])),
+      yMax: Math.max(...coins.map(c => c[1]))
+    };
   }
 
   /**

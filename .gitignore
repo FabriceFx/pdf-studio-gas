@@ -1,2 +1,14 @@
+# Identifiants clasp : contiennent un chemin absolu et des jetons.
 .clasp.json
 .clasprc.json
+
+# Dépendances npm, réinstallables depuis package.json.
+node_modules/
+
+# Polices de travail, volumineuses et non redistribuables telles quelles.
+*.ttf
+*.otf
+
+# Sorties d'essai.
+*.pdf
+*.png
