@@ -41,7 +41,24 @@ const CONFIG_WEBAPP = Object.freeze({
    */
   MAX_PAGES_CONVERSION: 20,
 
-  NOM_DOSSIER_RESULTATS: "PDFApplication - résultats"
+  NOM_DOSSIER_RESULTATS: "PDFApplication - résultats",
+
+  /**
+   * Préfixes de type retirés des noms de champs avant affichage.
+   *
+   * Les formulaires PDF portent des noms écrits pour l'outil de conception,
+   * pas pour celui qui les remplit : « TxtLieuDisparition » plutôt que
+   * « Lieu de disparition ». Retirer le préfixe et espacer les mots rend le
+   * formulaire lisible sans rien inventer.
+   *
+   * « num » en est délibérément absent : dans un formulaire français il
+   * signifie « numéro » bien plus souvent qu'il n'annonce un type, et le
+   * retirer ferait perdre du sens — « num_facture » deviendrait « Facture ».
+   * Ajuste cette liste si tes formulaires suivent une autre convention.
+   */
+  PREFIXES_TECHNIQUES: Object.freeze([
+    "txt", "dat", "chk", "cmb", "lst", "opt", "btn", "rdo", "fld"
+  ])
 });
 
 /**
@@ -503,7 +520,12 @@ async function executerAction_(action, blobs, options) {
 
     case "lireFormulaire": {
       const champs = await moteur.getValuesFromPDFForm(blobs[0]);
-      return { mode: "donnees", donnees: { champs } };
+      // Le libellé est calculé ici plutôt que côté navigateur : c'est une
+      // fonction pure, et la placer au serveur la rend vérifiable par le banc.
+      return {
+        mode: "donnees",
+        donnees: { champs: champs.map(c => ({ ...c, libelle: libelleLisible_(c.name) })) }
+      };
     }
 
     case "ecrireFormulaire":
@@ -896,6 +918,54 @@ function enTeteDepuisFormulaire_(options) {
   }
 
   return configuration;
+}
+
+/**
+ * Rend lisible le nom technique d'un champ de formulaire PDF.
+ *
+ * Quatre transformations, dans cet ordre : on ne garde que le dernier segment
+ * d'un nom hiérarchique et on retire les index, on écarte un éventuel préfixe
+ * de type, on sépare les mots collés, et on applique la capitalisation de
+ * phrase française — majuscule au premier mot seulement, les sigles restant
+ * intacts.
+ *
+ * Le nom d'origine n'est jamais perdu : il reste attaché au champ et le
+ * navigateur l'affiche en infobulle. Cette fonction embellit l'étiquette,
+ * elle ne renomme rien.
+ *
+ * @param {string} nom Nom technique du champ.
+ * @return {string} Libellé lisible, ou le nom d'origine s'il ne reste rien.
+ */
+function libelleLisible_(nom) {
+  let texte = String(nom || "").split(".").pop();
+  texte = texte.replace(/\[\d+\]/g, "");
+
+  // Le caractère suivant le préfixe doit être une majuscule, un chiffre ou un
+  // séparateur : c'est ce qui distingue « DatDisparition » de « Date ».
+  const bas = texte.toLowerCase();
+  for (const prefixe of CONFIG_WEBAPP.PREFIXES_TECHNIQUES) {
+    if (bas.indexOf(prefixe) === 0
+        && texte.length > prefixe.length
+        && /[A-Z0-9_-]/.test(texte.charAt(prefixe.length))) {
+      texte = texte.slice(prefixe.length);
+      break;
+    }
+  }
+
+  texte = texte.replace(/[_-]+/g, " ");
+  texte = texte.replace(/([a-zà-ÿ0-9])([A-ZÀ-Þ])/g, "$1 $2");
+  texte = texte.replace(/([A-ZÀ-Þ]{2,})([A-ZÀ-Þ][a-zà-ÿ])/g, "$1 $2");
+  texte = texte.replace(/\s+/g, " ").trim();
+
+  if (!texte) return String(nom || "");
+
+  return texte.split(" ").map((mot, rang) => {
+    // Un mot entièrement en capitales est un sigle : SIRET, CEDEX, RIB.
+    if (mot.length > 1 && mot === mot.toUpperCase() && /[A-ZÀ-Þ]/.test(mot)) return mot;
+    return rang === 0
+      ? mot.charAt(0).toUpperCase() + mot.slice(1).toLowerCase()
+      : mot.toLowerCase();
+  }).join(" ");
 }
 
 /**

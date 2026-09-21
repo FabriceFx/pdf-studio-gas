@@ -148,7 +148,8 @@ async function executerBanc_(inclureTestsLents) {
       ["Placement d'un élément sur la page", testPlacer_],
       ["Construction de l'en-tête depuis le formulaire", testEnTeteDepuisFormulaire_],
       ["Construction des métadonnées depuis le formulaire", testMetadonneesDepuisFormulaire_],
-      ["Nom de fichier sans extension", testNomSansExtension_]
+      ["Nom de fichier sans extension", testNomSansExtension_],
+      ["Libellé lisible d'un champ de formulaire", testLibelleLisible_]
     ];
 
     if (inclureTestsLents) {
@@ -1218,6 +1219,61 @@ async function testNomSansExtension_() {
   affirmer_(nomSansExtension_(null) === "document", "Nom absent.");
 
   return "5 formes de nom traitées";
+}
+
+/**
+ * Mise en forme des noms de champs d'un formulaire PDF.
+ *
+ * Les cas sont tirés d'un formulaire réel — un avis de disparition — plus les
+ * formes qui font trébucher la transformation : un mot commençant par les
+ * mêmes lettres qu'un préfixe, un sigle, un nom hiérarchique.
+ *
+ * @return {Promise<string>}
+ */
+async function testLibelleLisible_() {
+  const cas = [
+    // Champs observés sur un formulaire réel
+    ["DatDisparition", "Disparition"],
+    ["TxtLieuDisporation", "Lieu disporation"],
+    ["TxtCirconstances", "Circonstances"],
+    ["DatFaitLe", "Fait le"],
+    ["DonneesPersonnelles", "Donnees personnelles"],
+
+    // Noms hiérarchiques produits par les outils de conception
+    ["topmostSubform[0].Page1[0].numSIRET[0]", "Num SIRET"],
+    ["form1[0].section[2].nom_de_famille[0]", "Nom de famille"],
+
+    // Mots débutant comme un préfixe : le préfixe ne doit PAS être retiré,
+    // sans quoi « Date » deviendrait « E ».
+    ["Date", "Date"],
+    ["Numero", "Numero"],
+    ["Chkbox", "Chkbox"],
+    ["Txt", "Txt"],
+
+    // Sigles conservés en capitales
+    ["adresseCEDEX", "Adresse CEDEX"],
+    ["TXT_NOM", "NOM"],
+
+    // Séparateurs et casse
+    ["chkAccord", "Accord"],
+    ["Dat_naissance", "Naissance"],
+    ["nom_de_famille", "Nom de famille"],
+
+    // « num » n'est pas traité comme un préfixe : dans un formulaire français
+    // il désigne un numéro, et le retirer ferait perdre le sens.
+    ["num_facture", "Num facture"],
+
+    // Formes dégénérées : le nom d'origine est rendu plutôt qu'une chaîne vide
+    ["", ""],
+    ["Nom", "Nom"]
+  ];
+
+  cas.forEach(([entree, attendu]) => {
+    const obtenu = libelleLisible_(entree);
+    affirmer_(obtenu === attendu, `« ${entree} » → « ${obtenu} » au lieu de « ${attendu} »`);
+  });
+
+  return `${cas.length} noms de champs mis en forme`;
 }
 
 /**

@@ -4,6 +4,16 @@ Tous les changements notables apportés à ce projet seront documentés dans ce 
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
+## [2.1.4] - 2026-09-21
+
+### Modifié
+- **Formulaire PDF :** Les noms de champs sont mis en forme avant affichage. « TxtLieuDisporation » devient « Lieu disporation », « DatDisparition » devient « Disparition », « numSIRET » devient « Num SIRET ». Le préfixe de type est retiré, les mots collés séparés, la capitalisation de phrase française appliquée, et les sigles conservés en capitales. Le nom technique reste accessible en infobulle sur l'étiquette.
+- **Formulaire PDF :** La mise en forme est calculée côté serveur, dans `libelleLisible_`, plutôt que dans le navigateur : c'est une fonction pure, et l'y placer la rend vérifiable par le banc.
+
+### Ajouté
+- **Configuration :** `CONFIG_WEBAPP.PREFIXES_TECHNIQUES` liste les préfixes retirés, ajustable selon les conventions de nommage. « num » en est délibérément absent : dans un formulaire français il désigne un numéro plus souvent qu'un type, et le retirer ferait perdre du sens.
+- **Tests :** `testLibelleLisible_` couvre dix-neuf noms de champs, dont ceux relevés sur un formulaire réel et les formes qui font trébucher la transformation — un mot commençant comme un préfixe, un sigle, un nom hiérarchique. Trente-cinq tests au total.
+
 ## [2.1.3] - 2026-09-21
 
 ### Ajouté
